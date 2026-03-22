@@ -23,9 +23,9 @@ class GeminiService:
             )
             return json.loads(response.text)
         except json.JSONDecodeError as e:
-            raise Exception(f"Gemini 응답 파싱 실패: {e}")
+            raise Exception(f"Gemini 응답 파싱 실패: {e}") from e
         except Exception as e:
-            raise Exception(f"Gemini 호출 실패: {e}")
+            raise Exception(f"Gemini 호출 실패: {e}") from e
 
     def recommend_meals(
         self, dates: list, meal_types: list, family_tags: list,
@@ -135,5 +135,7 @@ class GeminiService:
 
 def get_gemini() -> GeminiService:
     """FastAPI Depends 용."""
-    api_key = os.getenv("GEMINI_API_KEY", "")
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise RuntimeError("GEMINI_API_KEY environment variable is not set")
     return GeminiService(api_key=api_key)
