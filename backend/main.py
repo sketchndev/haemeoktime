@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
@@ -7,9 +8,14 @@ load_dotenv()
 from database import init_db
 from routers import profile, meals, recipes, shopping, school_meals
 
-init_db()
 
-app = FastAPI(title="해먹타임 API")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    yield
+
+
+app = FastAPI(title="해먹타임 API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
