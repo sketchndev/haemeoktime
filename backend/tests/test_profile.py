@@ -1,6 +1,3 @@
-import pytest
-from unittest.mock import MagicMock
-
 
 def test_get_profile_returns_defaults(client):
     res = client.get("/api/profile")
