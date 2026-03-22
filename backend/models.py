@@ -1,0 +1,175 @@
+from pydantic import BaseModel
+from typing import Optional
+
+
+# ── Profile ──────────────────────────────────────────────
+
+class CookingTimes(BaseModel):
+    breakfast: int
+    lunch: int
+    dinner: int
+
+
+class TagCreate(BaseModel):
+    tag: str
+
+
+class TagResponse(BaseModel):
+    id: int
+    tag: str
+
+
+class CondimentCreate(BaseModel):
+    name: str
+
+
+class CondimentResponse(BaseModel):
+    id: int
+    name: str
+
+
+class ProfileResponse(BaseModel):
+    family_tags: list[TagResponse]
+    condiments: list[CondimentResponse]
+    cooking_times: CookingTimes
+
+
+# ── Meals ────────────────────────────────────────────────
+
+class RecommendRequest(BaseModel):
+    period: str                          # "today" | "week" | "custom"
+    dates: list[str] = []               # period="custom" 일 때 날짜 목록
+    meal_types: list[str]               # ["breakfast", "lunch", "dinner"]
+    available_ingredients: str = ""
+    use_school_meals: bool = False
+
+
+class MenuItem(BaseModel):
+    history_id: int
+    name: str
+
+
+class MealSlot(BaseModel):
+    meal_type: str
+    is_school_meal: bool = False
+    menus: list[MenuItem]
+
+
+class DayPlan(BaseModel):
+    date: str
+    meals: list[MealSlot]
+
+
+class RecommendResponse(BaseModel):
+    days: list[DayPlan]
+
+
+class SingleReRecommendRequest(BaseModel):
+    date: str
+    meal_type: str
+    history_id: int                      # 교체할 meal_history 행 PK
+    menu_name: str
+    max_minutes_override: Optional[int] = None
+    existing_menus: list[str] = []
+
+
+class MealTypeReRecommendRequest(BaseModel):
+    date: str
+    meal_type: str
+    max_minutes_override: Optional[int] = None
+    existing_history_ids: list[int] = []
+
+
+# ── Recipes ──────────────────────────────────────────────
+
+class RecipeRequest(BaseModel):
+    menu_name: str
+    servings: int
+    main_ingredient_weight: Optional[int] = None
+
+
+class Ingredient(BaseModel):
+    name: str
+    amount: str
+
+
+class RecipeResponse(BaseModel):
+    menu_name: str
+    servings: int
+    calories: int
+    ingredients: list[Ingredient]
+    steps: list[str]
+    health_notes: Optional[str] = None
+
+
+class CombinedCookingRequest(BaseModel):
+    date: str
+    meal_type: str
+    menus: list[str]
+
+
+class CookingStep(BaseModel):
+    label: str
+    menu_tag: str
+    description: str
+
+
+class CombinedCookingResponse(BaseModel):
+    total_minutes: int
+    optimized_minutes: int
+    steps: list[CookingStep]
+
+
+class FavoriteCreate(BaseModel):
+    menu_name: str
+
+
+class FavoriteResponse(BaseModel):
+    id: int
+    menu_name: str
+
+
+# ── Shopping ─────────────────────────────────────────────
+
+class ShoppingItemCreate(BaseModel):
+    name: str
+    quantity: Optional[str] = None
+    category: Optional[str] = None
+
+
+class ShoppingItemResponse(BaseModel):
+    id: int
+    name: str
+    quantity: Optional[str]
+    category: Optional[str]
+    is_checked: bool
+    is_auto: bool
+
+
+class ShoppingResponse(BaseModel):
+    week_start: str
+    items: list[ShoppingItemResponse]
+
+
+class ShoppingGenerateRequest(BaseModel):
+    menus: list[str]
+
+
+class ShoppingCheckRequest(BaseModel):
+    is_checked: bool
+
+
+class FrequentItemCreate(BaseModel):
+    name: str
+
+
+class FrequentItemResponse(BaseModel):
+    id: int
+    name: str
+
+
+# ── School Meals ──────────────────────────────────────────
+
+class SchoolMealDay(BaseModel):
+    date: str
+    menu_items: list[str]
