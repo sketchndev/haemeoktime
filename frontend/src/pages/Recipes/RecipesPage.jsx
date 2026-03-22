@@ -13,9 +13,13 @@ export default function RecipesPage() {
   }, [])
 
   const handleDelete = async (id) => {
-    await deleteFavorite(id)
-    setFavorites((prev) => prev.filter((f) => f.id !== id))
-    toast.success('즐겨찾기에서 삭제했어요')
+    try {
+      await deleteFavorite(id)
+      setFavorites((prev) => prev.filter((f) => f.id !== id))
+      toast.success('즐겨찾기에서 삭제했어요')
+    } catch (e) {
+      toast.error(e.message)
+    }
   }
 
   const handleSearch = () => {

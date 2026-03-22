@@ -15,7 +15,7 @@ export default function CombinedCooking() {
   if (!menus && plan) {
     const day = plan.days.find(d => d.date === date)
     const meal = day?.meals.find(m => m.meal_type === mealType)
-    menus = meal?.menus.map(m => m.menu_name) ?? []
+    menus = meal?.menus.map(m => m.name) ?? []
   }
   menus = menus ?? []
   const [result, setResult] = useState(null)

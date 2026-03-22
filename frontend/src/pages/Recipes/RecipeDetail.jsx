@@ -44,14 +44,18 @@ export default function RecipeDetail() {
   }
 
   const toggleFavorite = async () => {
-    if (favorited && favoriteId) {
-      await deleteFavorite(favoriteId)
-      setFavorited(false); setFavoriteId(null)
-      toast.success('즐겨찾기에서 삭제했어요')
-    } else {
-      const result = await addFavorite(decodedName)
-      setFavorited(true); setFavoriteId(result.id)
-      toast.success('즐겨찾기에 추가했어요')
+    try {
+      if (favorited && favoriteId) {
+        await deleteFavorite(favoriteId)
+        setFavorited(false); setFavoriteId(null)
+        toast.success('즐겨찾기에서 삭제했어요')
+      } else {
+        const result = await addFavorite(decodedName)
+        setFavorited(true); setFavoriteId(result.id)
+        toast.success('즐겨찾기에 추가했어요')
+      }
+    } catch (e) {
+      toast.error(e.message)
     }
   }
 

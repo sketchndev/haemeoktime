@@ -20,7 +20,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (!loading) setTimes(profile.cooking_times)
-  }, [loading])
+  }, [loading, profile.cooking_times])
 
   const handleAddTag = async () => {
     if (!newTag.trim()) return

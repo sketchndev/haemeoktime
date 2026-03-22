@@ -28,16 +28,24 @@ export default function ShoppingPage() {
   useEffect(() => { load() }, [])
 
   const handleCheck = async (id, checked) => {
-    await checkShoppingItem(id, !checked)
-    setShopping((prev) => ({
-      ...prev,
-      items: prev.items.map((i) => i.id === id ? { ...i, is_checked: !checked } : i),
-    }))
+    try {
+      await checkShoppingItem(id, !checked)
+      setShopping((prev) => ({
+        ...prev,
+        items: prev.items.map((i) => i.id === id ? { ...i, is_checked: !checked } : i),
+      }))
+    } catch (e) {
+      toast.error(e.message)
+    }
   }
 
   const handleDelete = async (id) => {
-    await deleteShoppingItem(id)
-    setShopping((prev) => ({ ...prev, items: prev.items.filter((i) => i.id !== id) }))
+    try {
+      await deleteShoppingItem(id)
+      setShopping((prev) => ({ ...prev, items: prev.items.filter((i) => i.id !== id) }))
+    } catch (e) {
+      toast.error(e.message)
+    }
   }
 
   const handleAddItem = async () => {
