@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import {
   getShopping, addShoppingItem, checkShoppingItem, deleteShoppingItem,
-  getFrequent, addFrequent,
+  getFrequent, addFrequent, deleteFrequent,
 } from '../../api/shopping'
 import LoadingSpinner from '../../components/LoadingSpinner'
 
@@ -61,6 +61,13 @@ export default function ShoppingPage() {
       const item = await addFrequent(newFrequent.trim())
       setFrequent((prev) => [...prev, item])
       setNewFrequent('')
+    } catch (e) { toast.error(e.message) }
+  }
+
+  const handleDeleteFrequent = async (id) => {
+    try {
+      await deleteFrequent(id)
+      setFrequent((prev) => prev.filter((f) => f.id !== id))
     } catch (e) { toast.error(e.message) }
   }
 
@@ -142,13 +149,15 @@ export default function ShoppingPage() {
           <div className="mt-2 space-y-2">
             <div className="flex flex-wrap gap-2">
               {frequent.map((f) => (
-                <button
-                  key={f.id}
-                  onClick={() => handleFrequentToList(f.name)}
-                  className="bg-gray-100 text-sm px-3 py-1 rounded-full"
-                >
-                  {f.name}
-                </button>
+                <span key={f.id} className="flex items-center bg-gray-100 text-sm px-3 py-1 rounded-full gap-1">
+                  <button onClick={() => handleFrequentToList(f.name)}>
+                    {f.name}
+                  </button>
+                  <button
+                    onClick={() => handleDeleteFrequent(f.id)}
+                    className="text-gray-400 hover:text-red-400 text-xs ml-1"
+                  >✕</button>
+                </span>
               ))}
             </div>
             <div className="flex gap-2">

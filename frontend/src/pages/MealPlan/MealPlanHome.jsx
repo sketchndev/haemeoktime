@@ -8,6 +8,7 @@ import LoadingSpinner from '../../components/LoadingSpinner'
 const PERIODS = [
   { key: 'today', label: '오늘' },
   { key: 'week', label: '이번 주' },
+  { key: 'custom', label: '📅 직접 선택' },
 ]
 const MEAL_TYPES = [
   { key: 'breakfast', label: '아침' },
@@ -23,6 +24,20 @@ export default function MealPlanHome() {
   const [useSchoolMeals, setUseSchoolMeals] = useState(false)
   const [ingredients, setIngredients] = useState('')
   const [loading, setLoading] = useState(false)
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+
+  const computeDates = () => {
+    if (period !== 'custom' || !startDate || !endDate) return []
+    const dates = []
+    const current = new Date(startDate)
+    const end = new Date(endDate)
+    while (current <= end) {
+      dates.push(current.toISOString().split('T')[0])
+      current.setDate(current.getDate() + 1)
+    }
+    return dates
+  }
 
   const toggleMealType = (key) => {
     setMealTypes((prev) =>
@@ -37,8 +52,11 @@ export default function MealPlanHome() {
     }
     setLoading(true)
     try {
+      const computedDates = computeDates()
       const result = await recommendMeals({
-        period, dates: [], meal_types: mealTypes,
+        period: period === 'custom' ? 'custom' : period,
+        dates: computedDates,
+        meal_types: mealTypes,
         available_ingredients: ingredients,
         use_school_meals: useSchoolMeals,
       })
@@ -61,7 +79,7 @@ export default function MealPlanHome() {
 
       <section>
         <h2 className="text-sm font-semibold text-gray-500 mb-2">기간</h2>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {PERIODS.map(({ key, label }) => (
             <button
               key={key}
@@ -74,6 +92,23 @@ export default function MealPlanHome() {
             </button>
           ))}
         </div>
+        {period === 'custom' && (
+          <div className="flex gap-2 mt-2 items-center">
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="border rounded-lg px-2 py-1 text-sm"
+            />
+            <span className="text-gray-400 text-sm">~</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="border rounded-lg px-2 py-1 text-sm"
+            />
+          </div>
+        )}
       </section>
 
       <section>

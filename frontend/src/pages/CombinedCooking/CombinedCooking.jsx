@@ -3,21 +3,49 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { generateCombinedCooking } from '../../api/recipes'
 import LoadingSpinner from '../../components/LoadingSpinner'
+import { useMealPlan } from '../../contexts/MealPlanContext'
 
 export default function CombinedCooking() {
   const navigate = useNavigate()
   const { date, mealType } = useParams()
   const { state } = useLocation()
-  const menus = state?.menus || []
+  const { plan } = useMealPlan()
+
+  let menus = state?.menus
+  if (!menus && plan) {
+    const day = plan.days.find(d => d.date === date)
+    const meal = day?.meals.find(m => m.meal_type === mealType)
+    menus = meal?.menus.map(m => m.menu_name) ?? []
+  }
+  menus = menus ?? []
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (menus.length === 0) {
+      setLoading(false)
+      return
+    }
     generateCombinedCooking(date, mealType, menus)
       .then(setResult)
       .catch((e) => toast.error(e.message))
       .finally(() => setLoading(false))
   }, [])
+
+  if (!loading && menus.length === 0) {
+    return (
+      <div className="p-4">
+        <div className="flex items-center gap-2 mb-4">
+          <button onClick={() => navigate(-1)} className="text-xl">←</button>
+          <h1 className="text-lg font-bold">⚡ 함께 요리하기</h1>
+        </div>
+        <p className="text-center text-gray-400 py-8 text-sm">메뉴 정보를 찾을 수 없어요</p>
+        <button onClick={() => navigate(-1)} className="w-full border rounded-xl py-2 text-sm text-gray-600">
+          뒤로 가기
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="p-4">
