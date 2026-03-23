@@ -11,5 +11,4 @@ export const parseCondimentPhoto = (file) => {
   form.append('file', file)
   return client.post('/profile/condiments/photo', form)
 }
-export const getMealPlanSettings = () => client.get('/profile/meal-plan-settings')
 export const updateMealPlanSettings = (settings) => client.put('/profile/meal-plan-settings', settings)
