@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { recommendMeals } from '../../api/meals'
+import { recommendMeals, getTodayMeals, getWeekMeals } from '../../api/meals'
 import { useMealPlan } from '../../contexts/MealPlanContext'
 import LoadingSpinner from '../../components/LoadingSpinner'
 
@@ -16,6 +16,15 @@ const MEAL_TYPES = [
   { key: 'dinner', label: '저녁' },
 ]
 
+const MEAL_LABELS = { breakfast: '🌅 아침', lunch: '☀️ 점심', dinner: '🌙 저녁' }
+
+function isPastMeal(mealType) {
+  const hour = new Date().getHours()
+  if (mealType === 'breakfast') return hour >= 10
+  if (mealType === 'lunch') return hour >= 15
+  return false
+}
+
 export default function MealPlanHome() {
   const navigate = useNavigate()
   const { setPlan } = useMealPlan()
@@ -24,6 +33,17 @@ export default function MealPlanHome() {
   const [useSchoolMeals, setUseSchoolMeals] = useState(false)
   const [ingredients, setIngredients] = useState('')
   const [loading, setLoading] = useState(false)
+  const [todayPlan, setTodayPlan] = useState(null)
+  const [todayLoading, setTodayLoading] = useState(true)  // true: avoid flash before fetch
+  const [weekLoading, setWeekLoading] = useState(false)
+
+  useEffect(() => {
+    getTodayMeals()
+      .then((data) => setTodayPlan(data))
+      .catch(() => {}) // silent fail — show form only
+      .finally(() => setTodayLoading(false))
+  }, [])
+
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
 
@@ -69,6 +89,19 @@ export default function MealPlanHome() {
     }
   }
 
+  const handleViewWeek = async () => {
+    setWeekLoading(true)
+    try {
+      const result = await getWeekMeals()
+      setPlan(result)
+      navigate('/meals/result')
+    } catch (e) {
+      toast.error(e.message)
+    } finally {
+      setWeekLoading(false)
+    }
+  }
+
   if (loading) return <LoadingSpinner text="AI가 식단을 추천 중..." />
 
   return (
@@ -76,6 +109,55 @@ export default function MealPlanHome() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">해먹타임 🍽</h1>
       </div>
+
+      {!todayLoading && todayPlan?.days?.length > 0 && (() => {
+        const todayDate = todayPlan.days[0].date
+        const visibleMeals = todayPlan.days[0].meals.filter(
+          (m) => m.menus.length > 0 && !isPastMeal(m.meal_type)
+        )
+        if (visibleMeals.length === 0) return null
+        return (
+          <section>
+            <h2 className="text-sm font-semibold text-gray-500 mb-2">오늘 식단</h2>
+            <div className="space-y-2">
+              {visibleMeals.map((meal) => {
+                const menuNames = meal.menus.map((m) => m.name)
+                const handleRecipe = () => {
+                  if (menuNames.length >= 2) {
+                    navigate(
+                      `/meals/result/${todayDate}/${meal.meal_type}/cooking`,
+                      { state: { menus: menuNames } }
+                    )
+                  } else {
+                    navigate(`/recipes/${encodeURIComponent(menuNames[0])}`)
+                  }
+                }
+                return (
+                  <div key={meal.meal_type} className="bg-white rounded-xl shadow-sm p-3">
+                    <p className="font-semibold text-sm mb-1">{MEAL_LABELS[meal.meal_type]}</p>
+                    <p className="text-sm text-gray-700 mb-2">
+                      {menuNames.join('  •  ')}
+                    </p>
+                    <button
+                      onClick={handleRecipe}
+                      className="text-xs text-amber-600 border border-amber-300 px-3 py-1 rounded-full"
+                    >
+                      🍳 레시피 보기
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+            <button
+              onClick={handleViewWeek}
+              disabled={weekLoading}
+              className="mt-3 w-full text-sm text-green-700 border border-green-300 py-2 rounded-xl"
+            >
+              {weekLoading ? '...' : '📅 이번 주 식단 보기'}
+            </button>
+          </section>
+        )
+      })()}
 
       <section>
         <h2 className="text-sm font-semibold text-gray-500 mb-2">기간</h2>
