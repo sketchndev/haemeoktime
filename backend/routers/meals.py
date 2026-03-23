@@ -35,8 +35,7 @@ def _build_plan_from_rows(rows) -> dict:
     """meal_history rows → plan 구조 변환 헬퍼.
     rows는 date, id, meal_type, menu_name 컬럼을 포함해야 한다.
     """
-    from collections import OrderedDict
-    days_dict: dict = OrderedDict()
+    days_dict: dict = {}
     for r in rows:
         d = r["date"]
         mt = r["meal_type"]
@@ -186,9 +185,9 @@ def rerecommend_meal_type(
 def get_today_meals(db=Depends(get_db)):
     today = date.today().isoformat()
     rows = db.execute(
-        "SELECT id, meal_type, menu_name, ? as date FROM meal_history "
+        "SELECT id, date, meal_type, menu_name FROM meal_history "
         "WHERE date = ? ORDER BY id",
-        (today, today)
+        (today,)
     ).fetchall()
     return _build_plan_from_rows(rows)
 
