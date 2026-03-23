@@ -24,7 +24,11 @@ def _get_context(db):
     ).fetchall()]
     times = {r["meal_type"]: r["max_minutes"]
              for r in db.execute("SELECT meal_type, max_minutes FROM cooking_time_settings").fetchall()}
-    return tags, condiments, history, times
+    rows = db.execute("SELECT key, value FROM meal_plan_settings").fetchall()
+    rules = {r["key"]: r["value"] for r in rows}
+    weekly_rule = rules.get("weekly_rule", "")
+    composition_rule = rules.get("composition_rule", "")
+    return tags, condiments, history, times, weekly_rule, composition_rule
 
 
 def _get_school_meals_dict(db, dates: list[str]) -> dict:
@@ -51,7 +55,7 @@ def _resolve_dates(req: RecommendRequest) -> list[str]:
 def recommend(body: RecommendRequest, db=Depends(get_db), gemini: GeminiService = Depends(get_gemini)):
     _purge_old_history(db)
     dates = _resolve_dates(body)
-    tags, condiments, history, times = _get_context(db)
+    tags, condiments, history, times, weekly_rule, composition_rule = _get_context(db)
     school_meals = _get_school_meals_dict(db, dates) if body.use_school_meals else {}
 
     try:
@@ -60,6 +64,8 @@ def recommend(body: RecommendRequest, db=Depends(get_db), gemini: GeminiService 
             family_tags=tags, condiments=condiments,
             meal_history=history, school_meals=school_meals,
             cooking_times=times, available_ingredients=body.available_ingredients,
+            weekly_rule=weekly_rule,
+            composition_rule=composition_rule,
         )
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
@@ -98,7 +104,7 @@ def rerecommend_single(
     db=Depends(get_db),
     gemini: GeminiService = Depends(get_gemini),
 ):
-    tags, condiments, _, times = _get_context(db)
+    tags, condiments, _, times, _, _ = _get_context(db)
     max_min = body.max_minutes_override if body.max_minutes_override is not None else times.get(body.meal_type, 40)
 
     try:
@@ -124,13 +130,14 @@ def rerecommend_meal_type(
     db=Depends(get_db),
     gemini: GeminiService = Depends(get_gemini),
 ):
-    tags, condiments, history, times = _get_context(db)
+    tags, condiments, history, times, _, composition_rule = _get_context(db)
     max_min = body.max_minutes_override if body.max_minutes_override is not None else times.get(body.meal_type, 40)
 
     try:
         result = gemini.re_recommend_meal_type(
             date=body.date, meal_type=body.meal_type, family_tags=tags,
             condiments=condiments, max_minutes=max_min, meal_history=history,
+            composition_rule=composition_rule,
         )
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
