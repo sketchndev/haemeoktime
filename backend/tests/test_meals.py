@@ -147,3 +147,42 @@ def test_get_today_meals_empty(client):
     res = client.get("/api/meals/today")
     assert res.status_code == 200
     assert res.json() == {"days": []}
+
+
+def test_get_week_meals_with_data(client):
+    """이번 주 meal_history가 있으면 날짜순 plan 구조로 반환한다."""
+    from database import get_db_path
+    import sqlite3
+    from datetime import date, timedelta
+
+    today = date.today()
+    monday = today - timedelta(days=today.weekday())
+    day1 = monday.isoformat()
+    day2 = (monday + timedelta(days=1)).isoformat()
+
+    conn = sqlite3.connect(get_db_path())
+    conn.execute(
+        "INSERT INTO meal_history (date, meal_type, menu_name) VALUES (?, 'dinner', '불고기')",
+        (day1,)
+    )
+    conn.execute(
+        "INSERT INTO meal_history (date, meal_type, menu_name) VALUES (?, 'lunch', '비빔밥')",
+        (day2,)
+    )
+    conn.commit()
+    conn.close()
+
+    res = client.get("/api/meals/week")
+    assert res.status_code == 200
+    data = res.json()
+    dates = [d["date"] for d in data["days"]]
+    assert day1 in dates
+    assert day2 in dates
+    assert dates == sorted(dates)  # 날짜순 정렬
+
+
+def test_get_week_meals_empty(client):
+    """이번 주 meal_history가 없으면 days 빈 배열을 반환한다."""
+    res = client.get("/api/meals/week")
+    assert res.status_code == 200
+    assert res.json() == {"days": []}

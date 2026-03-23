@@ -192,6 +192,19 @@ def get_today_meals(db=Depends(get_db)):
     return _build_plan_from_rows(rows)
 
 
+@router.get("/meals/week")
+def get_week_meals(db=Depends(get_db)):
+    today = date.today()
+    monday = today - timedelta(days=today.weekday())
+    sunday = monday + timedelta(days=6)
+    rows = db.execute(
+        "SELECT id, date, meal_type, menu_name FROM meal_history "
+        "WHERE date >= ? AND date <= ? ORDER BY date, id",
+        (monday.isoformat(), sunday.isoformat())
+    ).fetchall()
+    return _build_plan_from_rows(rows)
+
+
 @router.delete("/meals/history/{history_id}")
 def delete_history(history_id: int, db=Depends(get_db)):
     db.execute("DELETE FROM meal_history WHERE id = ?", (history_id,))
