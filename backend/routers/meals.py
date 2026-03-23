@@ -31,6 +31,31 @@ def _get_context(db):
     return tags, condiments, history, times, weekly_rule, composition_rule
 
 
+def _build_plan_from_rows(rows) -> dict:
+    """meal_history rows → plan 구조 변환 헬퍼.
+    rows는 date, id, meal_type, menu_name 컬럼을 포함해야 한다.
+    """
+    from collections import OrderedDict
+    days_dict: dict = OrderedDict()
+    for r in rows:
+        d = r["date"]
+        mt = r["meal_type"]
+        if d not in days_dict:
+            days_dict[d] = {}
+        if mt not in days_dict[d]:
+            days_dict[d][mt] = []
+        days_dict[d][mt].append({"history_id": r["id"], "name": r["menu_name"]})
+
+    days_out = []
+    for d, meals_dict in days_dict.items():
+        meals_out = [
+            {"meal_type": mt, "is_school_meal": False, "menus": menus}
+            for mt, menus in meals_dict.items()
+        ]
+        days_out.append({"date": d, "meals": meals_out})
+    return {"days": days_out}
+
+
 def _get_school_meals_dict(db, dates: list[str]) -> dict:
     if not dates:
         return {}
@@ -155,6 +180,17 @@ def rerecommend_meal_type(
         menus_out.append({"history_id": cur.lastrowid, "name": menu_name})
 
     return {"menus": menus_out}
+
+
+@router.get("/meals/today")
+def get_today_meals(db=Depends(get_db)):
+    today = date.today().isoformat()
+    rows = db.execute(
+        "SELECT id, meal_type, menu_name, ? as date FROM meal_history "
+        "WHERE date = ? ORDER BY id",
+        (today, today)
+    ).fetchall()
+    return _build_plan_from_rows(rows)
 
 
 @router.delete("/meals/history/{history_id}")

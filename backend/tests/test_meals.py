@@ -106,3 +106,44 @@ def test_recommend_gemini_failure_returns_503(client, mock_gemini):
         "meal_types": ["dinner"], "available_ingredients": "", "use_school_meals": False,
     })
     assert res.status_code == 503
+
+
+def test_get_today_meals_with_data(client):
+    """오늘 meal_history가 있으면 plan 구조로 반환한다."""
+    from database import get_db_path
+    import sqlite3
+    from datetime import date
+
+    today = date.today().isoformat()
+    conn = sqlite3.connect(get_db_path())
+    conn.execute(
+        "INSERT INTO meal_history (date, meal_type, menu_name) VALUES (?, 'dinner', '된장찌개')",
+        (today,)
+    )
+    conn.execute(
+        "INSERT INTO meal_history (date, meal_type, menu_name) VALUES (?, 'dinner', '시금치나물')",
+        (today,)
+    )
+    conn.commit()
+    conn.close()
+
+    res = client.get("/api/meals/today")
+    assert res.status_code == 200
+    data = res.json()
+    assert len(data["days"]) == 1
+    assert data["days"][0]["date"] == today
+    meals = data["days"][0]["meals"]
+    assert len(meals) == 1
+    assert meals[0]["meal_type"] == "dinner"
+    assert meals[0]["is_school_meal"] is False
+    menus = meals[0]["menus"]
+    assert len(menus) == 2
+    assert menus[0]["name"] == "된장찌개"
+    assert "history_id" in menus[0]
+
+
+def test_get_today_meals_empty(client):
+    """오늘 meal_history가 없으면 days 빈 배열을 반환한다."""
+    res = client.get("/api/meals/today")
+    assert res.status_code == 200
+    assert res.json() == {"days": []}
