@@ -4,7 +4,7 @@ import toast from 'react-hot-toast'
 import { useProfile } from '../../contexts/ProfileContext'
 import {
   addFamilyTag, deleteFamilyTag, addCondiment, deleteCondiment,
-  updateCookingTimes, parseCondimentPhoto,
+  updateCookingTimes, parseCondimentPhoto, updateMealPlanSettings,
 } from '../../api/profile'
 import TagChip from '../../components/TagChip'
 
@@ -17,10 +17,14 @@ export default function SettingsPage() {
   const [newCondiment, setNewCondiment] = useState('')
   const [times, setTimes] = useState(profile.cooking_times)
   const [photoLoading, setPhotoLoading] = useState(false)
+  const [mealPlanSettings, setMealPlanSettings] = useState(profile.meal_plan_settings)
 
   useEffect(() => {
-    if (!loading) setTimes(profile.cooking_times)
-  }, [loading, profile.cooking_times])
+    if (!loading) {
+      setTimes(profile.cooking_times)
+      setMealPlanSettings(profile.meal_plan_settings)
+    }
+  }, [loading, profile.cooking_times, profile.meal_plan_settings])
 
   const handleAddTag = async () => {
     if (!newTag.trim()) return
@@ -53,6 +57,14 @@ export default function SettingsPage() {
   const handleSaveTimes = async () => {
     try {
       await updateCookingTimes(times)
+      toast.success('저장됐어요')
+      await refresh()
+    } catch (e) { toast.error(e.message) }
+  }
+
+  const handleSaveMealPlanSettings = async () => {
+    try {
+      await updateMealPlanSettings(mealPlanSettings)
       toast.success('저장됐어요')
       await refresh()
     } catch (e) { toast.error(e.message) }
@@ -150,6 +162,37 @@ export default function SettingsPage() {
           <input type="file" accept="image/*" className="hidden" onChange={handleCondimentPhoto} disabled={photoLoading} />
         </label>
         {photoLoading && <p className="text-xs text-gray-400 mt-1">AI가 조미료를 분석 중...</p>}
+      </section>
+
+      <section>
+        <h2 className="font-semibold mb-2">📋 식단 구성 설정</h2>
+        <div className="space-y-3">
+          <div>
+            <label className="text-sm text-gray-600 block mb-1">주간 식단 구성</label>
+            <textarea
+              className="w-full border rounded-lg px-3 py-2 text-sm resize-none"
+              rows={2}
+              maxLength={500}
+              placeholder="예) 주말 점심만 양식, 그 외 한식"
+              value={mealPlanSettings.weekly_rule}
+              onChange={(e) => setMealPlanSettings((s) => ({ ...s, weekly_rule: e.target.value }))}
+            />
+          </div>
+          <div>
+            <label className="text-sm text-gray-600 block mb-1">한끼 식단 구성</label>
+            <textarea
+              className="w-full border rounded-lg px-3 py-2 text-sm resize-none"
+              rows={2}
+              maxLength={500}
+              placeholder="예) 한식은 국+반찬 2개, 양식은 에피타이저+메인요리"
+              value={mealPlanSettings.composition_rule}
+              onChange={(e) => setMealPlanSettings((s) => ({ ...s, composition_rule: e.target.value }))}
+            />
+          </div>
+        </div>
+        <button onClick={handleSaveMealPlanSettings} className="mt-2 w-full bg-green-500 text-white py-2 rounded-lg text-sm">
+          저장
+        </button>
       </section>
 
       <section>
