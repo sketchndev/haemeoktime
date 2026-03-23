@@ -8,6 +8,7 @@ export function ProfileProvider({ children }) {
     family_tags: [],
     condiments: [],
     cooking_times: { breakfast: 15, lunch: 30, dinner: 40 },
+    meal_plan_settings: { weekly_rule: '', composition_rule: '' },
   })
   const [loading, setLoading] = useState(true)
 
