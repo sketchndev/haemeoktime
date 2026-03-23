@@ -56,6 +56,11 @@ CREATE TABLE IF NOT EXISTS school_meals (
     menu_items TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS meal_plan_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
 """
 
 
@@ -71,14 +76,19 @@ def init_db(db_path: str | None = None) -> None:
         INSERT OR IGNORE INTO cooking_time_settings (meal_type, max_minutes)
         VALUES ('breakfast', 15), ('lunch', 30), ('dinner', 40)
     """)
+    conn.execute("""
+        INSERT OR IGNORE INTO meal_plan_settings (key, value)
+        VALUES ('weekly_rule', ''), ('composition_rule', '')
+    """)
     conn.commit()
     conn.close()
 
 
 def get_db():
     """FastAPI Depends 용 DB 연결 제공."""
-    conn = sqlite3.connect(get_db_path())
+    conn = sqlite3.connect(get_db_path(), check_same_thread=False, timeout=30)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys = ON")
     try:
         yield conn
