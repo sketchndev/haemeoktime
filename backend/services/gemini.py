@@ -9,7 +9,7 @@ from google.genai import types
 class GeminiService:
     def __init__(self, api_key: str):
         self.client = genai.Client(api_key=api_key)
-        self.model = "gemini-1.5-flash"
+        self.model = "gemini-2.5-flash"
         self.config = types.GenerateContentConfig(
             response_mime_type="application/json"
         )
@@ -31,7 +31,15 @@ class GeminiService:
         self, dates: list, meal_types: list, family_tags: list,
         condiments: list, meal_history: list, school_meals: dict,
         cooking_times: dict, available_ingredients: str,
+        weekly_rule: str = "",
+        composition_rule: str = "",
     ) -> dict:
+        rule_lines = ""
+        if weekly_rule:
+            rule_lines += f"\n주간 구성 규칙: {weekly_rule}"
+        if composition_rule:
+            rule_lines += f"\n한끼 구성 규칙: {composition_rule}"
+
         prompt = f"""당신은 한국 가정 식단 전문가입니다. 아래 조건에 맞는 식단을 추천하고 유효한 JSON만 반환하세요.
 
 날짜: {dates}
@@ -41,7 +49,7 @@ class GeminiService:
 최근 식단 이력(겹침 방지): {meal_history or '없음'}
 급식 메뉴(해당 날짜 제외 처리): {school_meals or '없음'}
 끼니별 최대 요리 시간: {cooking_times}
-집에 있는 재료: {available_ingredients or '없음'}
+집에 있는 재료: {available_ingredients or '없음'}{rule_lines}
 
 규칙:
 - 흰쌀밥, 김치, 깍두기 등 상시 보유 반찬 제외
@@ -68,11 +76,13 @@ class GeminiService:
     def re_recommend_meal_type(
         self, date: str, meal_type: str, family_tags: list,
         condiments: list, max_minutes: int, meal_history: list,
+        composition_rule: str = "",
     ) -> dict:
+        composition_line = f"\n한끼 구성 규칙: {composition_rule}" if composition_rule else ""
         prompt = f"""한국 가정 식단 전문가입니다. {date} {meal_type} 끼니 전체를 재추천하세요. JSON만 반환.
 
 가족 상황: {family_tags}, 조미료: {condiments}, 최대 요리시간: {max_minutes}분
-최근 이력(겹침 방지): {meal_history}
+최근 이력(겹침 방지): {meal_history}{composition_line}
 규칙: 흰쌀밥, 김치, 깍두기 제외
 
 응답 형식: {{"menus": ["메뉴명1", "메뉴명2"]}}"""
