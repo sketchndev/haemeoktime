@@ -36,6 +36,7 @@ export default function MealPlanHome() {
   const [todayPlan, setTodayPlan] = useState(null)
   const [todayLoading, setTodayLoading] = useState(true)  // true: avoid flash before fetch
   const [weekLoading, setWeekLoading] = useState(false)
+  const [showForm, setShowForm] = useState(false)
 
   useEffect(() => {
     getTodayMeals()
@@ -155,88 +156,96 @@ export default function MealPlanHome() {
             >
               {weekLoading ? '...' : '📅 이번 주 식단 보기'}
             </button>
+            <button
+              onClick={() => setShowForm(true)}
+              className="mt-2 w-full text-sm text-gray-600 border border-gray-300 py-2 rounded-xl"
+            >
+              ✨ 새로 추천받기
+            </button>
           </section>
         )
       })()}
 
-      <section>
-        <h2 className="text-sm font-semibold text-gray-500 mb-2">기간</h2>
-        <div className="flex gap-2 flex-wrap">
-          {PERIODS.map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => setPeriod(key)}
-              className={`px-4 py-2 rounded-full text-sm font-medium ${
-                period === key ? 'bg-green-500 text-white' : 'bg-white border text-gray-700'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        {period === 'custom' && (
-          <div className="flex gap-2 mt-2 items-center">
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="border rounded-lg px-2 py-1 text-sm"
-            />
-            <span className="text-gray-400 text-sm">~</span>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="border rounded-lg px-2 py-1 text-sm"
-            />
+      {(!todayLoading && (!todayPlan?.days?.length || showForm)) && <>
+        <section>
+          <h2 className="text-sm font-semibold text-gray-500 mb-2">기간</h2>
+          <div className="flex gap-2 flex-wrap">
+            {PERIODS.map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setPeriod(key)}
+                className={`px-4 py-2 rounded-full text-sm font-medium ${
+                  period === key ? 'bg-green-500 text-white' : 'bg-white border text-gray-700'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
-        )}
-      </section>
+          {period === 'custom' && (
+            <div className="flex gap-2 mt-2 items-center">
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="border rounded-lg px-2 py-1 text-sm"
+              />
+              <span className="text-gray-400 text-sm">~</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="border rounded-lg px-2 py-1 text-sm"
+              />
+            </div>
+          )}
+        </section>
 
-      <section>
-        <h2 className="text-sm font-semibold text-gray-500 mb-2">끼니</h2>
-        <div className="flex gap-2">
-          {MEAL_TYPES.map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => toggleMealType(key)}
-              className={`px-4 py-2 rounded-full text-sm font-medium ${
-                mealTypes.includes(key) ? 'bg-green-500 text-white' : 'bg-white border text-gray-700'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </section>
+        <section>
+          <h2 className="text-sm font-semibold text-gray-500 mb-2">끼니</h2>
+          <div className="flex gap-2">
+            {MEAL_TYPES.map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => toggleMealType(key)}
+                className={`px-4 py-2 rounded-full text-sm font-medium ${
+                  mealTypes.includes(key) ? 'bg-green-500 text-white' : 'bg-white border text-gray-700'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </section>
 
-      <section className="flex items-center justify-between bg-white rounded-xl p-3 shadow-sm">
-        <span className="text-sm">🏫 급식 연동</span>
+        <section className="flex items-center justify-between bg-white rounded-xl p-3 shadow-sm">
+          <span className="text-sm">🏫 급식 연동</span>
+          <button
+            onClick={() => setUseSchoolMeals((v) => !v)}
+            className={`w-12 h-6 rounded-full transition-colors ${useSchoolMeals ? 'bg-green-500' : 'bg-gray-300'}`}
+          >
+            <span className={`block w-5 h-5 bg-white rounded-full shadow transition-transform ${useSchoolMeals ? 'translate-x-6' : 'translate-x-0.5'}`} />
+          </button>
+        </section>
+
+        <section>
+          <h2 className="text-sm font-semibold text-gray-500 mb-2">집에 있는 재료</h2>
+          <textarea
+            className="w-full border rounded-xl px-3 py-2 text-sm resize-none"
+            rows={3}
+            placeholder="예) 냉장고에 두부, 애호박 있어요"
+            value={ingredients}
+            onChange={(e) => setIngredients(e.target.value)}
+          />
+        </section>
+
         <button
-          onClick={() => setUseSchoolMeals((v) => !v)}
-          className={`w-12 h-6 rounded-full transition-colors ${useSchoolMeals ? 'bg-green-500' : 'bg-gray-300'}`}
+          onClick={handleRecommend}
+          className="w-full bg-green-500 text-white py-4 rounded-xl font-bold text-lg shadow-lg"
         >
-          <span className={`block w-5 h-5 bg-white rounded-full shadow transition-transform ${useSchoolMeals ? 'translate-x-6' : 'translate-x-0.5'}`} />
+          ✨ 식단 추천받기
         </button>
-      </section>
-
-      <section>
-        <h2 className="text-sm font-semibold text-gray-500 mb-2">집에 있는 재료</h2>
-        <textarea
-          className="w-full border rounded-xl px-3 py-2 text-sm resize-none"
-          rows={3}
-          placeholder="예) 냉장고에 두부, 애호박 있어요"
-          value={ingredients}
-          onChange={(e) => setIngredients(e.target.value)}
-        />
-      </section>
-
-      <button
-        onClick={handleRecommend}
-        className="w-full bg-green-500 text-white py-4 rounded-xl font-bold text-lg shadow-lg"
-      >
-        ✨ 식단 추천받기
-      </button>
+      </>}
     </div>
   )
 }
