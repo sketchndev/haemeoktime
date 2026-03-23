@@ -52,6 +52,7 @@ def _build_plan_from_rows(rows) -> dict:
             for mt, menus in meals_dict.items()
         ]
         days_out.append({"date": d, "meals": meals_out})
+    days_out.sort(key=lambda x: x["date"])
     return {"days": days_out}
 
 

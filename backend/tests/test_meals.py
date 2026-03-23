@@ -162,12 +162,12 @@ def test_get_week_meals_with_data(client):
 
     conn = sqlite3.connect(get_db_path())
     conn.execute(
-        "INSERT INTO meal_history (date, meal_type, menu_name) VALUES (?, 'dinner', '불고기')",
-        (day1,)
-    )
-    conn.execute(
         "INSERT INTO meal_history (date, meal_type, menu_name) VALUES (?, 'lunch', '비빔밥')",
         (day2,)
+    )
+    conn.execute(
+        "INSERT INTO meal_history (date, meal_type, menu_name) VALUES (?, 'dinner', '불고기')",
+        (day1,)
     )
     conn.commit()
     conn.close()
