@@ -52,3 +52,59 @@ def test_invalid_json_response_raises(svc):
     with patch.object(svc.client.models, "generate_content", return_value=m):
         with pytest.raises(Exception, match="파싱"):
             svc.recommend_meals([], [], [], [], [], {}, {}, "")
+
+
+def test_recommend_meals_injects_rules_into_prompt(svc):
+    fake = {"days": []}
+    with patch.object(svc.client.models, "generate_content", return_value=mock_gemini_response(fake)) as mock_call:
+        svc.recommend_meals(
+            dates=["2026-03-23"],
+            meal_types=["dinner"],
+            family_tags=[],
+            condiments=[],
+            meal_history=[],
+            school_meals={},
+            cooking_times={"dinner": 40},
+            available_ingredients="",
+            weekly_rule="주말 점심만 양식",
+            composition_rule="한식은 국+반찬 2개",
+        )
+    prompt = mock_call.call_args[1]["contents"]
+    assert "주말 점심만 양식" in prompt
+    assert "한식은 국+반찬 2개" in prompt
+
+
+def test_recommend_meals_skips_empty_rules(svc):
+    fake = {"days": []}
+    with patch.object(svc.client.models, "generate_content", return_value=mock_gemini_response(fake)) as mock_call:
+        svc.recommend_meals(
+            dates=["2026-03-23"],
+            meal_types=["dinner"],
+            family_tags=[],
+            condiments=[],
+            meal_history=[],
+            school_meals={},
+            cooking_times={"dinner": 40},
+            available_ingredients="",
+            weekly_rule="",
+            composition_rule="",
+        )
+    prompt = mock_call.call_args[1]["contents"]
+    assert "주간 구성 규칙" not in prompt
+    assert "한끼 구성 규칙" not in prompt
+
+
+def test_re_recommend_meal_type_injects_composition_rule(svc):
+    fake = {"menus": []}
+    with patch.object(svc.client.models, "generate_content", return_value=mock_gemini_response(fake)) as mock_call:
+        svc.re_recommend_meal_type(
+            date="2026-03-23",
+            meal_type="dinner",
+            family_tags=[],
+            condiments=[],
+            max_minutes=40,
+            meal_history=[],
+            composition_rule="한식은 국+반찬 2개",
+        )
+    prompt = mock_call.call_args[1]["contents"]
+    assert "한식은 국+반찬 2개" in prompt
