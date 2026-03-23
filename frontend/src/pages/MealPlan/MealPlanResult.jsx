@@ -11,7 +11,12 @@ const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토']
 export default function MealPlanResult() {
   const navigate = useNavigate()
   const { plan, updateMenu, replaceMeal, removeMenu } = useMealPlan()
-  const [selectedDate, setSelectedDate] = useState(plan?.days?.[0]?.date || '')
+  const todayStr = new Date().toLocaleDateString('en-CA')
+  const initialDate =
+    plan?.days?.find((d) => d.date === todayStr)?.date ||
+    plan?.days?.[0]?.date ||
+    ''
+  const [selectedDate, setSelectedDate] = useState(initialDate)
   const [loading, setLoading] = useState({})
 
   if (!plan) {
@@ -81,7 +86,9 @@ export default function MealPlanResult() {
     <div className="p-4">
       <div className="flex items-center gap-2 mb-4">
         <button onClick={() => navigate('/')} className="text-xl">←</button>
-        <h1 className="text-lg font-bold flex-1">이번 주 식단</h1>
+        <h1 className="text-lg font-bold flex-1">
+          {plan.days.length === 1 ? '오늘 식단' : `${plan.days.length}일 식단`}
+        </h1>
       </div>
 
       <div className="flex gap-1 overflow-x-auto pb-2 mb-4">
