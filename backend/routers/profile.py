@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from database import get_db
 from models import (
     TagCreate, TagResponse, CondimentCreate, CondimentResponse,
-    CookingTimes, ProfileResponse,
+    CookingTimes, ProfileResponse, MealPlanSettings,
 )
 from services.gemini import GeminiService, get_gemini
 
@@ -15,12 +15,18 @@ def get_profile(db=Depends(get_db)):
     condiments = [dict(r) for r in db.execute("SELECT id, name FROM condiments").fetchall()]
     times = {r["meal_type"]: r["max_minutes"]
              for r in db.execute("SELECT meal_type, max_minutes FROM cooking_time_settings").fetchall()}
+    rows = db.execute("SELECT key, value FROM meal_plan_settings").fetchall()
+    rules = {r["key"]: r["value"] for r in rows}
     return {
         "family_tags": tags,
         "condiments": condiments,
         "cooking_times": {"breakfast": times.get("breakfast", 15),
                           "lunch": times.get("lunch", 30),
                           "dinner": times.get("dinner", 40)},
+        "meal_plan_settings": {
+            "weekly_rule": rules.get("weekly_rule", ""),
+            "composition_rule": rules.get("composition_rule", ""),
+        },
     }
 
 
@@ -31,6 +37,29 @@ def update_cooking_times(body: CookingTimes, db=Depends(get_db)):
             "INSERT OR REPLACE INTO cooking_time_settings (meal_type, max_minutes) VALUES (?, ?)",
             (meal_type, minutes),
         )
+    return {"ok": True}
+
+
+@router.get("/profile/meal-plan-settings", response_model=MealPlanSettings)
+def get_meal_plan_settings(db=Depends(get_db)):
+    rows = db.execute("SELECT key, value FROM meal_plan_settings").fetchall()
+    rules = {r["key"]: r["value"] for r in rows}
+    return MealPlanSettings(
+        weekly_rule=rules.get("weekly_rule", ""),
+        composition_rule=rules.get("composition_rule", ""),
+    )
+
+
+@router.put("/profile/meal-plan-settings")
+def update_meal_plan_settings(body: MealPlanSettings, db=Depends(get_db)):
+    db.execute(
+        "INSERT OR REPLACE INTO meal_plan_settings (key, value) VALUES (?, ?)",
+        ("weekly_rule", body.weekly_rule),
+    )
+    db.execute(
+        "INSERT OR REPLACE INTO meal_plan_settings (key, value) VALUES (?, ?)",
+        ("composition_rule", body.composition_rule),
+    )
     return {"ok": True}
 
 

@@ -61,3 +61,46 @@ def test_condiment_photo_gemini_failure_returns_503(client, mock_gemini):
         files={"file": ("test.jpg", b"fake", "image/jpeg")},
     )
     assert res.status_code == 503
+
+
+def test_get_profile_includes_meal_plan_settings(client):
+    res = client.get("/api/profile")
+    assert res.status_code == 200
+    body = res.json()
+    assert "meal_plan_settings" in body
+    assert body["meal_plan_settings"] == {"weekly_rule": "", "composition_rule": ""}
+
+
+def test_get_meal_plan_settings_returns_defaults(client):
+    res = client.get("/api/profile/meal-plan-settings")
+    assert res.status_code == 200
+    assert res.json() == {"weekly_rule": "", "composition_rule": ""}
+
+
+def test_update_meal_plan_settings_persists(client):
+    res = client.put("/api/profile/meal-plan-settings", json={
+        "weekly_rule": "주말 점심만 양식",
+        "composition_rule": "한식은 국+반찬 2개",
+    })
+    assert res.status_code == 200
+
+    res = client.get("/api/profile/meal-plan-settings")
+    assert res.json()["weekly_rule"] == "주말 점심만 양식"
+    assert res.json()["composition_rule"] == "한식은 국+반찬 2개"
+
+
+def test_update_meal_plan_settings_reflected_in_get_profile(client):
+    client.put("/api/profile/meal-plan-settings", json={
+        "weekly_rule": "평일 한식",
+        "composition_rule": "",
+    })
+    profile = client.get("/api/profile").json()
+    assert profile["meal_plan_settings"]["weekly_rule"] == "평일 한식"
+
+
+def test_update_meal_plan_settings_too_long_returns_422(client):
+    res = client.put("/api/profile/meal-plan-settings", json={
+        "weekly_rule": "x" * 501,
+        "composition_rule": "",
+    })
+    assert res.status_code == 422
