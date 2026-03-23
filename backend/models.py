@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 
@@ -28,10 +28,16 @@ class CondimentResponse(BaseModel):
     name: str
 
 
+class MealPlanSettings(BaseModel):
+    weekly_rule: str = Field("", max_length=500)
+    composition_rule: str = Field("", max_length=500)
+
+
 class ProfileResponse(BaseModel):
     family_tags: list[TagResponse]
     condiments: list[CondimentResponse]
     cooking_times: CookingTimes
+    meal_plan_settings: MealPlanSettings
 
 
 # ── Meals ────────────────────────────────────────────────
