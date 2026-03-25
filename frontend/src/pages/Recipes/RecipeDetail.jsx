@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { generateRecipe, addFavorite, deleteFavorite, getFavorites } from '../../api/recipes'
 import LoadingSpinner from '../../components/LoadingSpinner'
@@ -7,6 +7,7 @@ import LoadingSpinner from '../../components/LoadingSpinner'
 export default function RecipeDetail() {
   const navigate = useNavigate()
   const { menuName } = useParams()
+  const { state } = useLocation()
   const decodedName = decodeURIComponent(menuName)
   const [servings, setServings] = useState(2)
   const [weight, setWeight] = useState('')
@@ -26,7 +27,13 @@ export default function RecipeDetail() {
   }
 
   useEffect(() => {
-    load(servings, null)
+    // If navigated from favorites with saved recipe data, use it directly
+    if (state?.recipeData) {
+      setRecipe(state.recipeData)
+      setServings(state.recipeData.servings || 2)
+    } else {
+      load(servings, null)
+    }
     getFavorites().then((favs) => {
       const fav = favs.find((f) => f.menu_name === decodedName)
       if (fav) { setFavorited(true); setFavoriteId(fav.id) }
