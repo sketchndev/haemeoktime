@@ -53,7 +53,7 @@ export default function RecipesPage() {
             <div key={f.id} className="bg-white rounded-xl p-3 shadow-sm flex items-center justify-between">
               <button
                 onClick={() => {
-                  if (f.recipe_type === 'combined' && f.recipe_data) {
+                  if (f.recipe_type === 'combined') {
                     navigate(`/recipes/combined-favorite/${f.id}`, { state: { favorite: f } })
                   } else {
                     navigate(`/recipes/${encodeURIComponent(f.menu_name)}`, {

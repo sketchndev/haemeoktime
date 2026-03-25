@@ -75,6 +75,7 @@ export default function CombinedCooking() {
   }, [])
 
   const toggleFavorite = async () => {
+    if (!result) return
     try {
       if (favorited && favoriteId) {
         await deleteFavorite(favoriteId)
