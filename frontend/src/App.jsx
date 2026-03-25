@@ -10,6 +10,7 @@ import CombinedCooking from './pages/CombinedCooking/CombinedCooking'
 import ShoppingPage from './pages/Shopping/ShoppingPage'
 import RecipesPage from './pages/Recipes/RecipesPage'
 import RecipeDetail from './pages/Recipes/RecipeDetail'
+import CombinedFavoriteDetail from './pages/Recipes/CombinedFavoriteDetail'
 import SettingsPage from './pages/Settings/SettingsPage'
 import SchoolMealsPage from './pages/Settings/SchoolMealsPage'
 
@@ -26,6 +27,7 @@ export default function App() {
               <Route path="/meals/result/:date/:mealType/cooking" element={<CombinedCooking />} />
               <Route path="/shopping" element={<ShoppingPage />} />
               <Route path="/recipes" element={<RecipesPage />} />
+              <Route path="/recipes/combined-favorite/:id" element={<CombinedFavoriteDetail />} />
               <Route path="/recipes/:menuName" element={<RecipeDetail />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/settings/school-meals" element={<SchoolMealsPage />} />
