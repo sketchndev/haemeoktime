@@ -1,6 +1,7 @@
+import json
 from fastapi import APIRouter, Depends, HTTPException
 from database import get_db
-from models import RecipeRequest, RecipeResponse, CombinedCookingRequest, FavoriteCreate, FavoriteResponse
+from models import RecipeRequest, RecipeResponse, ExtractMainIngredientsRequest, CombinedCookingRequest, FavoriteCreate, FavoriteResponse
 from services.gemini import GeminiService, get_gemini
 
 router = APIRouter()
@@ -19,24 +20,46 @@ def generate_recipe(body: RecipeRequest, db=Depends(get_db), gemini: GeminiServi
     return result
 
 
+@router.post("/recipes/extract-main-ingredients")
+def extract_main_ingredients(body: ExtractMainIngredientsRequest, gemini: GeminiService = Depends(get_gemini)):
+    try:
+        return gemini.extract_main_ingredients(menus=body.menus)
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
 @router.post("/recipes/combined-cooking")
 def combined_cooking(body: CombinedCookingRequest, db=Depends(get_db), gemini: GeminiService = Depends(get_gemini)):
     tags = [r["tag"] for r in db.execute("SELECT tag FROM family_tags").fetchall()]
     try:
-        return gemini.generate_combined_cooking(menus=body.menus, family_tags=tags)
+        return gemini.generate_combined_cooking(
+            menus=body.menus, family_tags=tags,
+            servings=body.servings, main_ingredient_weights=body.main_ingredient_weights,
+        )
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
 
 
 @router.get("/recipes/favorites", response_model=list[FavoriteResponse])
 def list_favorites(db=Depends(get_db)):
-    return [dict(r) for r in db.execute("SELECT id, menu_name FROM favorite_recipes ORDER BY created_at DESC").fetchall()]
+    rows = db.execute("SELECT id, menu_name, recipe_type, recipe_data FROM favorite_recipes ORDER BY created_at DESC").fetchall()
+    result = []
+    for r in rows:
+        d = dict(r)
+        if d["recipe_data"]:
+            d["recipe_data"] = json.loads(d["recipe_data"])
+        result.append(d)
+    return result
 
 
 @router.post("/recipes/favorites", response_model=FavoriteResponse)
 def add_favorite(body: FavoriteCreate, db=Depends(get_db)):
-    cur = db.execute("INSERT INTO favorite_recipes (menu_name) VALUES (?)", (body.menu_name,))
-    return {"id": cur.lastrowid, "menu_name": body.menu_name}
+    recipe_data_str = json.dumps(body.recipe_data, ensure_ascii=False) if body.recipe_data else None
+    cur = db.execute(
+        "INSERT INTO favorite_recipes (menu_name, recipe_type, recipe_data) VALUES (?, ?, ?)",
+        (body.menu_name, body.recipe_type, recipe_data_str),
+    )
+    return {"id": cur.lastrowid, "menu_name": body.menu_name, "recipe_type": body.recipe_type, "recipe_data": body.recipe_data}
 
 
 @router.delete("/recipes/favorites/{fid}")

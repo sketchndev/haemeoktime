@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS meal_history (
 CREATE TABLE IF NOT EXISTS favorite_recipes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     menu_name TEXT NOT NULL,
+    recipe_type TEXT NOT NULL DEFAULT 'individual',
+    recipe_data TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -72,6 +74,15 @@ def init_db(db_path: str | None = None) -> None:
     path = db_path or get_db_path()
     conn = sqlite3.connect(path)
     conn.executescript(SCHEMA)
+    # Migration: add new columns to existing favorite_recipes table
+    try:
+        conn.execute("ALTER TABLE favorite_recipes ADD COLUMN recipe_type TEXT NOT NULL DEFAULT 'individual'")
+    except Exception:
+        pass  # Column already exists
+    try:
+        conn.execute("ALTER TABLE favorite_recipes ADD COLUMN recipe_data TEXT")
+    except Exception:
+        pass  # Column already exists
     conn.execute("""
         INSERT OR IGNORE INTO cooking_time_settings (meal_type, max_minutes)
         VALUES ('breakfast', 15), ('lunch', 30), ('dinner', 40)

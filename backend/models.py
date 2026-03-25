@@ -108,10 +108,16 @@ class RecipeResponse(BaseModel):
     health_notes: Optional[str] = None
 
 
+class ExtractMainIngredientsRequest(BaseModel):
+    menus: list[str]
+
+
 class CombinedCookingRequest(BaseModel):
     date: str
     meal_type: str
     menus: list[str]
+    servings: Optional[int] = None
+    main_ingredient_weights: Optional[dict[str, str]] = None
 
 
 class CookingStep(BaseModel):
@@ -128,11 +134,15 @@ class CombinedCookingResponse(BaseModel):
 
 class FavoriteCreate(BaseModel):
     menu_name: str
+    recipe_type: str = "individual"
+    recipe_data: Optional[dict] = None
 
 
 class FavoriteResponse(BaseModel):
     id: int
     menu_name: str
+    recipe_type: str = "individual"
+    recipe_data: Optional[dict] = None
 
 
 # ── Shopping ─────────────────────────────────────────────

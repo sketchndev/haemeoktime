@@ -50,3 +50,55 @@ def test_delete_favorite(client):
 
     favs = client.get("/api/recipes/favorites").json()
     assert not any(f["id"] == fid for f in favs)
+
+
+def test_add_favorite_with_recipe_data(client):
+    recipe_data = {
+        "menu_name": "된장찌개", "servings": 2, "calories": 200,
+        "ingredients": [{"name": "두부", "amount": "1/2모"}],
+        "steps": ["물을 끓인다"], "health_notes": None,
+    }
+    res = client.post("/api/recipes/favorites", json={
+        "menu_name": "된장찌개",
+        "recipe_type": "individual",
+        "recipe_data": recipe_data,
+    })
+    assert res.status_code == 200
+    body = res.json()
+    assert body["recipe_type"] == "individual"
+    assert body["recipe_data"]["calories"] == 200
+
+
+def test_add_combined_favorite(client):
+    combined_data = {
+        "total_minutes": 60, "optimized_minutes": 40,
+        "menus": ["된장찌개", "시금치나물"],
+        "ingredients": [{"menu": "된장찌개", "items": [{"name": "두부", "amount": "1/2모"}]}],
+        "steps": [{"label": "1단계", "menu_tag": "된장찌개", "description": "물 올리기"}],
+    }
+    res = client.post("/api/recipes/favorites", json={
+        "menu_name": "된장찌개 + 시금치나물",
+        "recipe_type": "combined",
+        "recipe_data": combined_data,
+    })
+    assert res.status_code == 200
+    assert res.json()["recipe_type"] == "combined"
+
+
+def test_list_favorites_includes_recipe_data(client):
+    recipe_data = {"calories": 300, "ingredients": [], "steps": []}
+    client.post("/api/recipes/favorites", json={
+        "menu_name": "비빔밥", "recipe_type": "individual", "recipe_data": recipe_data,
+    })
+    favs = client.get("/api/recipes/favorites").json()
+    fav = next(f for f in favs if f["menu_name"] == "비빔밥")
+    assert fav["recipe_data"]["calories"] == 300
+    assert fav["recipe_type"] == "individual"
+
+
+def test_add_favorite_without_recipe_data_backward_compat(client):
+    res = client.post("/api/recipes/favorites", json={"menu_name": "김치찌개"})
+    assert res.status_code == 200
+    body = res.json()
+    assert body["recipe_type"] == "individual"
+    assert body["recipe_data"] is None
