@@ -52,9 +52,18 @@ export default function RecipesPage() {
           {favorites.map((f) => (
             <div key={f.id} className="bg-white rounded-xl p-3 shadow-sm flex items-center justify-between">
               <button
-                onClick={() => navigate(`/recipes/${encodeURIComponent(f.menu_name)}`)}
+                onClick={() => {
+                  if (f.recipe_type === 'combined' && f.recipe_data) {
+                    navigate(`/recipes/combined-favorite/${f.id}`, { state: { favorite: f } })
+                  } else {
+                    navigate(`/recipes/${encodeURIComponent(f.menu_name)}`, {
+                      state: f.recipe_data ? { recipeData: f.recipe_data } : undefined,
+                    })
+                  }
+                }}
                 className="text-sm font-medium flex-1 text-left"
               >
+                {f.recipe_type === 'combined' && <span className="text-xs text-green-600 mr-1">⚡</span>}
                 {f.menu_name}
               </button>
               <button onClick={() => handleDelete(f.id)} className="text-gray-400 text-xl">♥</button>
