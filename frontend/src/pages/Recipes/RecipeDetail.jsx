@@ -50,7 +50,15 @@ export default function RecipeDetail() {
         setFavorited(false); setFavoriteId(null)
         toast.success('즐겨찾기에서 삭제했어요')
       } else {
-        const result = await addFavorite(decodedName)
+        const recipeData = recipe ? {
+          menu_name: recipe.menu_name,
+          servings: recipe.servings,
+          calories: recipe.calories,
+          ingredients: recipe.ingredients,
+          steps: recipe.steps,
+          health_notes: recipe.health_notes,
+        } : null
+        const result = await addFavorite(decodedName, 'individual', recipeData)
         setFavorited(true); setFavoriteId(result.id)
         toast.success('즐겨찾기에 추가했어요')
       }
