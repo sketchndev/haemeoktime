@@ -95,12 +95,18 @@ def init_db(db_path: str | None = None) -> None:
     conn.close()
 
 
-def get_db():
-    """FastAPI Depends 용 DB 연결 제공."""
+def open_db() -> sqlite3.Connection:
+    """수동 연결 생성 (StreamingResponse 제너레이터 내부용). 호출자가 직접 commit/close 해야 한다."""
     conn = sqlite3.connect(get_db_path(), check_same_thread=False, timeout=30)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys = ON")
+    return conn
+
+
+def get_db():
+    """FastAPI Depends 용 DB 연결 제공."""
+    conn = open_db()
     try:
         yield conn
         conn.commit()

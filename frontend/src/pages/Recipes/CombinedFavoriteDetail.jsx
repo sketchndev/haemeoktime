@@ -1,4 +1,4 @@
-import { useNavigate, useParams, useLocation } from 'react-router-dom'
+import { useNavigate, useParams, useLocation, Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { getFavorites, deleteFavorite } from '../../api/recipes'
@@ -40,22 +40,45 @@ export default function CombinedFavoriteDetail() {
     <div className="p-4">
       <div className="flex items-center gap-2 mb-4">
         <button onClick={() => navigate(-1)} className="text-xl">←</button>
-        <h1 className="text-lg font-bold flex-1">⚡ {favorite.menu_name}</h1>
+        <h1 className="text-base font-bold flex-1 leading-snug">
+          ⚡ {favorite.menu_name.split(' + ').map((name, i, arr) => (
+            <span key={i}>
+              {name}{i < arr.length - 1 && <span className="text-gray-400 mx-0.5">+</span>}
+              {i < arr.length - 1 && <br />}
+            </span>
+          ))}
+        </h1>
         {favorited && <button onClick={handleToggleFavorite} className="text-2xl">♥</button>}
       </div>
 
-      <div className="bg-amber-50 rounded-xl p-3 mb-4 text-sm">
-        <span className="text-gray-500">개별 합산</span>
-        <span className="line-through ml-2 text-gray-400">{data.total_minutes}분</span>
-        <span className="mx-2">→</span>
-        <span className="font-bold text-amber-600">{data.optimized_minutes}분</span>
+      <div className="bg-amber-50 rounded-xl p-3 mb-4 text-sm flex items-center justify-between">
+        <div>
+          <span className="text-gray-500">개별 합산</span>
+          <span className="line-through ml-2 text-gray-400">{data.total_minutes}분</span>
+          <span className="mx-2">→</span>
+          <span className="font-bold text-amber-600">{data.optimized_minutes}분</span>
+        </div>
+        {data.total_calories && (
+          <div>
+            <span className="text-gray-500">칼로리</span>
+            <span className="font-bold text-amber-600 ml-2">약 {data.total_calories} kcal</span>
+          </div>
+        )}
       </div>
 
       {data.ingredients?.length > 0 && (
         <div className="space-y-3 mb-4">
           {data.ingredients.map((group, i) => (
             <div key={i} className="bg-white rounded-xl p-3 shadow-sm">
-              <p className="text-sm font-semibold mb-2">{group.menu}</p>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-semibold">{group.menu}</p>
+                <Link
+                  to={`/recipes/${encodeURIComponent(group.menu)}`}
+                  className="text-xs text-green-600 font-medium"
+                >
+                  레시피 →
+                </Link>
+              </div>
               <div className="flex flex-wrap gap-x-3 gap-y-1">
                 {group.items.map((item, j) => (
                   <span key={j} className="text-sm text-gray-600">

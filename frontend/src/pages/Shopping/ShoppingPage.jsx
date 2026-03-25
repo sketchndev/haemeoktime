@@ -15,6 +15,7 @@ export default function ShoppingPage() {
   const [newItem, setNewItem] = useState('')
   const [newFrequent, setNewFrequent] = useState('')
   const [showFrequent, setShowFrequent] = useState(false)
+  const [editFrequent, setEditFrequent] = useState(false)
 
   const load = async () => {
     try {
@@ -146,38 +147,68 @@ export default function ShoppingPage() {
         <button onClick={handleAddItem} className="bg-green-500 text-white px-4 rounded-xl text-sm">추가</button>
       </div>
 
-      <div className="mt-4">
-        <button
-          onClick={() => setShowFrequent((v) => !v)}
-          className="text-sm text-gray-600 font-semibold"
-        >
-          자주 사는 물품 {showFrequent ? '▲' : '▼'}
-        </button>
+      <div className="mt-6 bg-white rounded-xl shadow-sm border border-gray-100 p-3">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => setShowFrequent((v) => !v)}
+            className="text-sm text-gray-600 font-semibold flex items-center gap-1"
+          >
+            <span>⭐</span> 자주 사는 물품 {showFrequent ? '▲' : '▼'}
+          </button>
+          {showFrequent && !editFrequent && (
+            <button
+              onClick={() => setEditFrequent(true)}
+              className="text-xs text-gray-400 hover:text-gray-600"
+            >
+              관리
+            </button>
+          )}
+          {showFrequent && editFrequent && (
+            <button
+              onClick={() => setEditFrequent(false)}
+              className="text-xs text-green-600 font-medium"
+            >
+              완료
+            </button>
+          )}
+        </div>
         {showFrequent && (
           <div className="mt-2 space-y-2">
             <div className="flex flex-wrap gap-2">
               {frequent.map((f) => (
-                <span key={f.id} className="flex items-center bg-gray-100 text-sm px-3 py-1 rounded-full gap-1">
-                  <button onClick={() => handleFrequentToList(f.name)}>
-                    {f.name}
-                  </button>
-                  <button
-                    onClick={() => handleDeleteFrequent(f.id)}
-                    className="text-gray-400 hover:text-red-400 text-xs ml-1"
-                  >✕</button>
+                <span key={f.id} className={`flex items-center text-sm px-3 py-1 rounded-full gap-1 ${
+                  editFrequent ? 'bg-red-50 border border-red-200' : 'bg-gray-100'
+                }`}>
+                  {editFrequent ? (
+                    <button
+                      onClick={() => handleDeleteFrequent(f.id)}
+                      className="text-red-400 hover:text-red-600 flex items-center gap-1"
+                    >
+                      <span className="text-xs">✕</span> {f.name}
+                    </button>
+                  ) : (
+                    <button onClick={() => handleFrequentToList(f.name)}>
+                      {f.name}
+                    </button>
+                  )}
                 </span>
               ))}
+              {frequent.length === 0 && !editFrequent && (
+                <p className="text-xs text-gray-400">등록된 물품이 없어요</p>
+              )}
             </div>
-            <div className="flex gap-2">
-              <input
-                className="flex-1 border rounded-lg px-2 py-1 text-sm"
-                placeholder="자주 사는 물품 추가"
-                value={newFrequent}
-                onChange={(e) => setNewFrequent(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleAddFrequent()}
-              />
-              <button onClick={handleAddFrequent} className="bg-gray-200 text-sm px-3 py-1 rounded-lg">+</button>
-            </div>
+            {editFrequent && (
+              <div className="flex gap-2">
+                <input
+                  className="flex-1 border rounded-lg px-2 py-1 text-sm"
+                  placeholder="자주 사는 물품 추가"
+                  value={newFrequent}
+                  onChange={(e) => setNewFrequent(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddFrequent()}
+                />
+                <button onClick={handleAddFrequent} className="bg-gray-200 text-sm px-3 py-1 rounded-lg">+</button>
+              </div>
+            )}
           </div>
         )}
       </div>

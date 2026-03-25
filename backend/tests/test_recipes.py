@@ -2,7 +2,7 @@ def _fake_recipe(menu="된장찌개", servings=2):
     return {
         "menu_name": menu, "servings": servings, "calories": 200,
         "ingredients": [{"name": "두부", "amount": "1/2모"}],
-        "steps": ["물을 끓인다"], "health_notes": None,
+        "steps": ["물을 끓인다"],
     }
 
 
@@ -56,7 +56,7 @@ def test_add_favorite_with_recipe_data(client):
     recipe_data = {
         "menu_name": "된장찌개", "servings": 2, "calories": 200,
         "ingredients": [{"name": "두부", "amount": "1/2모"}],
-        "steps": ["물을 끓인다"], "health_notes": None,
+        "steps": ["물을 끓인다"],
     }
     res = client.post("/api/recipes/favorites", json={
         "menu_name": "된장찌개",

@@ -32,7 +32,7 @@ def test_generate_recipe_includes_calories(svc):
     fake = {
         "menu_name": "된장찌개", "servings": 2, "calories": 180,
         "ingredients": [{"name": "두부", "amount": "1/2모"}],
-        "steps": ["물을 끓인다"], "health_notes": None,
+        "steps": ["물을 끓인다"],
     }
     with patch.object(svc.client.models, "generate_content", return_value=mock_gemini_response(fake)):
         result = svc.generate_recipe(menu_name="된장찌개", servings=2, family_tags=[], main_ingredient_weight=None)

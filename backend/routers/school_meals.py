@@ -25,15 +25,21 @@ def get_school_meals(db=Depends(get_db)):
     return [{"date": r["date"], "menu_items": json.loads(r["menu_items"])} for r in rows]
 
 
+ALLOWED_MIME_PREFIXES = ("image/", "application/pdf")
+
+
 @router.post("/school-meals/photo", response_model=list[SchoolMealDay])
 def upload_school_meal_photo(
     file: UploadFile = File(...),
     gemini: GeminiService = Depends(get_gemini),
     db=Depends(get_db),
 ):
+    mime = file.content_type or "image/jpeg"
+    if not any(mime.startswith(p) for p in ALLOWED_MIME_PREFIXES):
+        raise HTTPException(status_code=400, detail="이미지 또는 PDF 파일만 업로드할 수 있어요")
     try:
         data = file.file.read()
-        result = gemini.parse_school_meal_photo(data, file.content_type or "image/jpeg")
+        result = gemini.parse_school_meal_photo(data, mime)
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
 

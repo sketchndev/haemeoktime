@@ -7,7 +7,6 @@ __pycache__/
 
 # Environment
 .env
-!.env.example
 
 # Database
 *.db
@@ -24,3 +23,9 @@ dist/
 # IDE
 .vscode/
 .idea/
+
+# Local tool configs
+.claude/
+.history/
+.superpowers/
+.env*

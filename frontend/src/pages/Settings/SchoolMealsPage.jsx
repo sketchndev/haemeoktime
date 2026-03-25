@@ -42,10 +42,10 @@ export default function SchoolMealsPage() {
       </div>
 
       <label className={`flex items-center justify-center gap-2 bg-green-500 text-white py-3 rounded-xl mb-4 cursor-pointer ${uploading ? 'opacity-50' : ''}`}>
-        <span>📷 급식표 사진 업로드</span>
-        <input type="file" accept="image/*" className="hidden" onChange={handlePhoto} disabled={uploading} />
+        <span>📎 급식표 업로드 (사진/PDF)</span>
+        <input type="file" accept="image/*,application/pdf" className="hidden" onChange={handlePhoto} disabled={uploading} />
       </label>
-      {uploading && <p className="text-sm text-center text-gray-400 mb-4">AI가 급식표를 분석 중...</p>}
+      {uploading && <LoadingSpinner text="AI가 급식표를 분석 중..." />}
 
       {loading ? <LoadingSpinner /> : (
         <div className="space-y-3">

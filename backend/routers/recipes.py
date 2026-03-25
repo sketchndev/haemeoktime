@@ -1,8 +1,13 @@
 import json
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from database import get_db
 from models import RecipeRequest, RecipeResponse, ExtractMainIngredientsRequest, CombinedCookingRequest, FavoriteCreate, FavoriteResponse
 from services.gemini import GeminiService, get_gemini
+
+
+def _sse(data: dict) -> str:
+    return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 router = APIRouter()
 
@@ -14,10 +19,44 @@ def generate_recipe(body: RecipeRequest, db=Depends(get_db), gemini: GeminiServi
         result = gemini.generate_recipe(
             menu_name=body.menu_name, servings=body.servings,
             family_tags=tags, main_ingredient_weight=body.main_ingredient_weight,
+            user_context=body.user_context,
         )
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
     return result
+
+
+@router.post("/recipes/generate/stream")
+def generate_recipe_stream(body: RecipeRequest, db=Depends(get_db), gemini: GeminiService = Depends(get_gemini)):
+    tags = [r["tag"] for r in db.execute("SELECT tag FROM family_tags").fetchall()]
+
+    def event_generator():
+        yield _sse({"progress": 5, "stage": "설정 불러오는 중..."})
+
+        prompt = gemini.build_recipe_prompt(
+            menu_name=body.menu_name, servings=body.servings,
+            family_tags=tags, main_ingredient_weight=body.main_ingredient_weight,
+            user_context=body.user_context,
+        )
+
+        yield _sse({"progress": 10, "stage": "AI에게 요청 중..."})
+
+        try:
+            gen = gemini._call_stream(prompt)
+            result = None
+            try:
+                while True:
+                    chunk_idx, _ = next(gen)
+                    p = min(15 + chunk_idx * 5, 90)
+                    yield _sse({"progress": p, "stage": "레시피 생성 중..."})
+            except StopIteration as e:
+                result = e.value
+
+            yield _sse({"progress": 100, "stage": "완료!", "result": result})
+        except Exception as e:
+            yield _sse({"error": str(e)})
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 @router.post("/recipes/extract-main-ingredients")
@@ -35,9 +74,43 @@ def combined_cooking(body: CombinedCookingRequest, db=Depends(get_db), gemini: G
         return gemini.generate_combined_cooking(
             menus=body.menus, family_tags=tags,
             servings=body.servings, main_ingredient_weights=body.main_ingredient_weights,
+            user_context=body.user_context,
         )
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
+
+
+@router.post("/recipes/combined-cooking/stream")
+def combined_cooking_stream(body: CombinedCookingRequest, db=Depends(get_db), gemini: GeminiService = Depends(get_gemini)):
+    tags = [r["tag"] for r in db.execute("SELECT tag FROM family_tags").fetchall()]
+
+    def event_generator():
+        yield _sse({"progress": 5, "stage": "설정 불러오는 중..."})
+
+        prompt, config = gemini.build_combined_cooking_prompt(
+            menus=body.menus, family_tags=tags,
+            servings=body.servings, main_ingredient_weights=body.main_ingredient_weights,
+            user_context=body.user_context,
+        )
+
+        yield _sse({"progress": 10, "stage": "AI에게 요청 중..."})
+
+        try:
+            gen = gemini._call_stream(prompt, config=config)
+            result = None
+            try:
+                while True:
+                    chunk_idx, _ = next(gen)
+                    p = min(15 + chunk_idx * 3, 90)
+                    yield _sse({"progress": p, "stage": "AI가 최적 순서를 계산 중..."})
+            except StopIteration as e:
+                result = e.value
+
+            yield _sse({"progress": 100, "stage": "완료!", "result": result})
+        except Exception as e:
+            yield _sse({"error": str(e)})
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 @router.get("/recipes/favorites", response_model=list[FavoriteResponse])

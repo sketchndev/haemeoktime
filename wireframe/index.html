@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>해먹타임 — 와이어프레임</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #e8eaed;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px 0 40px;
+    }
+
+    /* ── 상단 네비 (화면 선택) ── */
+    .screen-nav {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 24px;
+      max-width: 700px;
+    }
+    .screen-nav button {
+      background: #fff;
+      border: 2px solid #d0d0d0;
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 13px;
+      cursor: pointer;
+      color: #555;
+      transition: all .15s;
+    }
+    .screen-nav button.active {
+      background: #2d2d2d;
+      border-color: #2d2d2d;
+      color: #fff;
+    }
+    .screen-nav button:hover:not(.active) {
+      border-color: #888;
+      color: #222;
+    }
+
+    /* ── 폰 프레임 ── */
+    .phone {
+      width: 375px;
+      min-height: 750px;
+      background: #fff;
+      border-radius: 36px;
+      border: 3px solid #333;
+      box-shadow: 0 20px 60px rgba(0,0,0,.25);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* 화면 패널 */
+    .screen { display: none; flex-direction: column; height: 100%; }
+    .screen.active { display: flex; }
+
+    /* ── 공통 헤더 ── */
+    .header {
+      background: #fff;
+      border-bottom: 1px solid #e0e0e0;
+      padding: 16px 20px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .header .logo { font-size: 18px; font-weight: 700; color: #1a1a1a; }
+    .header .back-btn {
+      font-size: 14px; color: #555; cursor: pointer;
+      background: none; border: none; padding: 4px 8px 4px 0;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .header .right { font-size: 22px; cursor: pointer; }
+    .header .sub { font-size: 12px; color: #888; margin-top: 2px; }
+
+    /* ── 본문 영역 ── */
+    .body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* ── 하단 탭 ── */
+    .tab-bar {
+      border-top: 1px solid #e0e0e0;
+      display: flex;
+      flex-shrink: 0;
+    }
+    .tab {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px 4px 12px;
+      cursor: pointer;
+      font-size: 10px;
+      color: #999;
+      gap: 3px;
+      border: none;
+      background: none;
+    }
+    .tab .icon { font-size: 20px; }
+    .tab.active { color: #2d9e5f; }
+    .tab.active .icon { filter: none; }
+
+    /* ── 공통 UI 컴포넌트 ── */
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-bottom: 4px;
+    }
+
+    .card {
+      background: #f8f8f8;
+      border: 1px solid #e8e8e8;
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #555;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .card-title .meal-info { display: flex; align-items: center; gap: 6px; }
+    .card-title .time-badge {
+      font-size: 11px;
+      background: #fff3e0;
+      color: #e67e22;
+      border-radius: 8px;
+      padding: 2px 7px;
+      font-weight: 500;
+    }
+    .card-title .school-badge {
+      font-size: 11px;
+      background: #e3f2fd;
+      color: #1976d2;
+      border-radius: 8px;
+      padding: 2px 7px;
+    }
+
+    .meal-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid #eee;
+    }
+    .meal-row:last-child { border-bottom: none; }
+    .meal-row .menu-name { font-size: 14px; color: #222; font-weight: 500; }
+    .meal-row .actions { display: flex; gap: 4px; }
+
+    .btn {
+      font-size: 11px;
+      border-radius: 6px;
+      padding: 3px 8px;
+      border: 1px solid;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .btn-ghost { background: #fff; border-color: #ddd; color: #666; }
+    .btn-primary { background: #2d9e5f; border-color: #2d9e5f; color: #fff; }
+    .btn-danger { background: #fff; border-color: #ffcdd2; color: #e53935; }
+    .btn-re { background: #fff; border-color: #c8e6c9; color: #388e3c; }
+    .btn-full {
+      width: 100%;
+      padding: 13px;
+      font-size: 15px;
+      font-weight: 600;
+      border-radius: 12px;
+      cursor: pointer;
+      text-align: center;
+      border: none;
+    }
+    .btn-cta { background: #2d9e5f; color: #fff; }
+    .btn-secondary-full { background: #f0f0f0; color: #444; border: 1px solid #ddd; }
+
+    .school-menu { font-size: 13px; color: #777; padding: 4px 0; }
+
+    /* 칩/태그 */
+    .chip {
+      display: inline-block;
+      font-size: 12px;
+      border-radius: 16px;
+      padding: 4px 10px;
+      background: #e8f5e9;
+      color: #2e7d32;
+      border: 1px solid #c8e6c9;
+      cursor: pointer;
+    }
+    .chip.selected { background: #2d9e5f; color: #fff; border-color: #2d9e5f; }
+    .chip.info { background: #e3f2fd; color: #1565c0; border-color: #bbdefb; }
+    .chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+
+    /* 입력 필드 */
+    .input-field {
+      width: 100%;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 14px;
+      color: #333;
+      background: #fafafa;
+      outline: none;
+    }
+
+    /* 요일 탭 */
+    .day-tabs {
+      display: flex;
+      gap: 4px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .day-tab {
+      flex-shrink: 0;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      background: #f0f0f0;
+      color: #666;
+      border: none;
+    }
+    .day-tab.active { background: #2d9e5f; color: #fff; }
+
+    /* 날짜 헤더 */
+    .date-header {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1a1a1a;
+      padding: 4px 0 2px;
+    }
+    .period-label { font-size: 12px; color: #888; margin-top: 2px; }
+
+    /* 장보기 */
+    .shop-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .shop-item:last-child { border-bottom: none; }
+    .shop-item input[type=checkbox] { width: 18px; height: 18px; accent-color: #2d9e5f; }
+    .shop-item .item-name { font-size: 14px; color: #222; flex: 1; }
+    .shop-item .item-name.done { text-decoration: line-through; color: #bbb; }
+    .shop-item .item-qty { font-size: 12px; color: #888; }
+
+    .divider { border: none; border-top: 1px solid #eee; margin: 4px 0; }
+
+    /* 레시피 */
+    .recipe-header {
+      background: #f0f7f3;
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .recipe-header .menu-title { font-size: 20px; font-weight: 700; color: #1a1a1a; }
+    .recipe-meta { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .recipe-meta .servings {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 14px; color: #333;
+    }
+    .recipe-meta .servings button {
+      width: 26px; height: 26px; border-radius: 50%;
+      border: 1px solid #ccc; background: #fff;
+      font-size: 16px; cursor: pointer; color: #333;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .recipe-meta .calorie {
+      font-size: 12px;
+      background: #fff3e0;
+      color: #e67e22;
+      border-radius: 8px;
+      padding: 3px 8px;
+    }
+    .weight-input {
+      font-size: 13px; color: #666;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .weight-input input {
+      width: 70px; border: 1px solid #ddd; border-radius: 6px;
+      padding: 4px 8px; font-size: 13px;
+    }
+
+    .ingredient-list { display: flex; flex-direction: column; gap: 4px; }
+    .ingredient-row {
+      display: flex; justify-content: space-between;
+      font-size: 13px; color: #333; padding: 4px 0;
+      border-bottom: 1px solid #f5f5f5;
+    }
+    .ingredient-row:last-child { border-bottom: none; }
+    .ingredient-row .qty { color: #888; }
+
+    .step-list { display: flex; flex-direction: column; gap: 10px; }
+    .step-row { display: flex; gap: 10px; font-size: 13px; color: #333; line-height: 1.5; }
+    .step-num {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: #2d9e5f; color: #fff;
+      font-size: 11px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; margin-top: 1px;
+    }
+    .step-wait { font-size: 12px; color: #888; font-style: italic; padding: 2px 0 2px 32px; }
+
+    .alert-box {
+      background: #fff8e1;
+      border: 1px solid #ffe082;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 13px;
+      color: #795548;
+    }
+    .alert-box .alert-title { font-weight: 600; margin-bottom: 4px; }
+
+    .optimize-card {
+      background: #e8f5e9;
+      border: 1px solid #a5d6a7;
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+    .optimize-card .oc-title { font-size: 14px; font-weight: 700; color: #2e7d32; margin-bottom: 6px; }
+    .optimize-card .oc-row { font-size: 12px; color: #555; margin-bottom: 3px; }
+    .optimize-card .oc-save { font-size: 13px; font-weight: 600; color: #1b5e20; }
+
+    /* 통합 조리 */
+    .legend { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+    .legend-item {
+      font-size: 11px; padding: 3px 10px; border-radius: 12px; font-weight: 600;
+    }
+    .legend-muguuk { background: #e3f2fd; color: #1565c0; border: 1px solid #90caf9; }
+    .legend-spinach { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+
+    .unified-step { display: flex; flex-direction: column; margin-bottom: 6px; }
+    .unified-row { display: flex; gap: 8px; font-size: 13px; align-items: flex-start; }
+    .unified-badge {
+      font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 600;
+      flex-shrink: 0; margin-top: 2px;
+    }
+    .ub-muguuk { background: #e3f2fd; color: #1565c0; }
+    .ub-spinach { background: #e8f5e9; color: #2e7d32; }
+    .unified-arrow {
+      font-size: 11px; color: #aaa; padding: 2px 0 2px 12px; font-style: italic;
+    }
+
+    /* 설정 */
+    .setting-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 0; border-bottom: 1px solid #f0f0f0;
+    }
+    .setting-row:last-child { border-bottom: none; }
+    .setting-label { font-size: 14px; color: #222; }
+    .setting-right { display: flex; align-items: center; gap: 8px; }
+    .setting-right .val { font-size: 14px; color: #555; width: 44px; text-align: center; }
+    .stepper-btn {
+      width: 28px; height: 28px; border-radius: 50%;
+      border: 1px solid #ccc; background: #fff;
+      font-size: 16px; cursor: pointer; color: #333;
+    }
+
+    .toggle-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 0;
+    }
+    .toggle { width: 44px; height: 24px; background: #2d9e5f; border-radius: 12px; position: relative; cursor: pointer; }
+    .toggle::after {
+      content: ''; position: absolute; right: 4px; top: 4px;
+      width: 16px; height: 16px; border-radius: 50%; background: #fff;
+    }
+
+    /* 재추천 팝업 */
+    .popup-overlay {
+      display: none; position: absolute; inset: 0;
+      background: rgba(0,0,0,.45); z-index: 100;
+      align-items: flex-end; justify-content: center;
+    }
+    .popup-overlay.show { display: flex; }
+    .popup {
+      background: #fff; width: 100%; border-radius: 20px 20px 0 0;
+      padding: 20px; display: flex; flex-direction: column; gap: 14px;
+    }
+    .popup-title { font-size: 16px; font-weight: 700; color: #1a1a1a; }
+    .popup-sub { font-size: 13px; color: #888; margin-top: -8px; }
+    .popup-btns { display: flex; gap: 8px; }
+    .popup-btns button { flex: 1; }
+  </style>
+</head>
+<body>
+
+<!-- 화면 선택 네비 -->
+<div class="screen-nav">
+  <button class="active" onclick="showScreen('home')">1. 식단 추천</button>
+  <button onclick="showScreen('result')">2. 추천 결과</button>
+  <button onclick="showScreen('shopping')">3. 장보기 리스트</button>
+  <button onclick="showScreen('recipe')">4. 레시피</button>
+  <button onclick="showScreen('unified')">4-1. 통합 조리</button>
+  <button onclick="showScreen('settings')">5. 내 설정</button>
+</div>
+
+<!-- ─────────── 폰 프레임 ─────────── -->
+<div class="phone">
+
+  <!-- ══════════ 화면 1: 식단 추천 ══════════ -->
+  <div class="screen active" id="screen-home">
+    <div class="header">
+      <span class="logo">🍳 해먹타임</span>
+      <span class="right">👤</span>
+    </div>
+    <div class="body">
+      <div class="section-title">기간</div>
+      <div class="chip-row">
+        <span class="chip selected">오늘</span>
+        <span class="chip">이번 주</span>
+        <span class="chip">직접 선택</span>
+      </div>
+
+      <div class="section-title">끼니</div>
+      <div class="chip-row">
+        <span class="chip selected">🌅 아침</span>
+        <span class="chip selected">☀️ 점심</span>
+        <span class="chip selected">🌙 저녁</span>
+      </div>
+
+      <div class="card">
+        <div class="toggle-row">
+          <span style="font-size:14px;color:#222">🏫 급식 연동</span>
+          <div class="toggle"></div>
+        </div>
+        <div style="font-size:12px;color:#aaa;margin-top:4px">급식 있는 끼니는 자동으로 추천에서 제외돼요</div>
+      </div>
+
+      <div class="section-title">집에 있는 재료</div>
+      <input class="input-field" placeholder="예: 냉장고에 두부, 애호박 있어요" />
+
+      <button class="btn-full btn-cta" onclick="showScreen('result')">✨ 식단 추천받기</button>
+    </div>
+    <div class="tab-bar">
+      <button class="tab active" onclick="showScreen('home')"><span class="icon">🍽</span>식단</button>
+      <button class="tab" onclick="showScreen('shopping')"><span class="icon">🛒</span>장보기</button>
+      <button class="tab" onclick="showScreen('recipe')"><span class="icon">📖</span>레시피</button>
+      <button class="tab" onclick="showScreen('settings')"><span class="icon">⚙️</span>설정</button>
+    </div>
+  </div>
+
+  <!-- ══════════ 화면 2: 추천 결과 ══════════ -->
+  <div class="screen" id="screen-result">
+    <div class="header">
+      <button class="back-btn" onclick="showScreen('home')">← 이번 주 식단</button>
+      <span class="right">🛒</span>
+    </div>
+    <div class="body">
+      <div class="period-label">2026년 3월 23일(월) ~ 3월 29일(일)</div>
+
+      <div class="day-tabs">
+        <button class="day-tab active">월</button>
+        <button class="day-tab">화</button>
+        <button class="day-tab">수</button>
+        <button class="day-tab">목</button>
+        <button class="day-tab">금</button>
+      </div>
+
+      <div class="date-header">3월 23일 월요일</div>
+
+      <!-- 아침 카드 -->
+      <div class="card">
+        <div class="card-title">
+          <div class="meal-info">
+            <span>🌅 아침</span>
+            <span class="time-badge">⏱ 15분</span>
+          </div>
+          <button class="btn btn-re" onclick="showPopup()">끼니 ↺</button>
+        </div>
+        <div class="meal-row">
+          <span class="menu-name">된장찌개</span>
+          <div class="actions">
+            <button class="btn btn-re">↺</button>
+            <button class="btn btn-ghost" onclick="showScreen('recipe')">레시피</button>
+            <button class="btn btn-danger">🗑</button>
+          </div>
+        </div>
+        <div class="meal-row">
+          <span class="menu-name">계란후라이</span>
+          <div class="actions">
+            <button class="btn btn-re">↺</button>
+            <button class="btn btn-ghost" onclick="showScreen('recipe')">레시피</button>
+            <button class="btn btn-danger">🗑</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 점심 카드 (급식) -->
+      <div class="card">
+        <div class="card-title">
+          <div class="meal-info">
+            <span>☀️ 점심</span>
+            <span class="school-badge">🏫 급식</span>
+          </div>
+        </div>
+        <div class="school-menu">잡채 / 미역국 / 배추김치</div>
+        <div style="font-size:11px;color:#aaa;margin-top:4px">급식 — 개별 추천 제외</div>
+      </div>
+
+      <!-- 저녁 카드 -->
+      <div class="card">
+        <div class="card-title">
+          <div class="meal-info">
+            <span>🌙 저녁</span>
+            <span class="time-badge">⏱ 40분</span>
+          </div>
+          <button class="btn btn-re" onclick="showPopup()">끼니 ↺</button>
+        </div>
+        <div class="meal-row">
+          <span class="menu-name">소고기무국</span>
+          <div class="actions">
+            <button class="btn btn-re">↺</button>
+            <button class="btn btn-ghost" onclick="showScreen('recipe')">레시피</button>
+            <button class="btn btn-danger">🗑</button>
+          </div>
+        </div>
+        <div class="meal-row">
+          <span class="menu-name">시금치나물</span>
+          <div class="actions">
+            <button class="btn btn-re">↺</button>
+            <button class="btn btn-ghost" onclick="showScreen('recipe')">레시피</button>
+            <button class="btn btn-danger">🗑</button>
+          </div>
+        </div>
+        <button class="btn-full" onclick="showScreen('unified')"
+          style="margin-top:8px;padding:8px;font-size:12px;font-weight:600;border-radius:8px;
+                 background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;">
+          ⚡ 함께 요리하기 &nbsp;·&nbsp; 개별 55분 → 최적화 38분
+        </button>
+      </div>
+
+      <button class="btn-full btn-secondary-full" onclick="showScreen('shopping')">🛒 장보기 리스트 만들기</button>
+    </div>
+    <div class="tab-bar">
+      <button class="tab active" onclick="showScreen('home')"><span class="icon">🍽</span>식단</button>
+      <button class="tab" onclick="showScreen('shopping')"><span class="icon">🛒</span>장보기</button>
+      <button class="tab" onclick="showScreen('recipe')"><span class="icon">📖</span>레시피</button>
+      <button class="tab" onclick="showScreen('settings')"><span class="icon">⚙️</span>설정</button>
+    </div>
+
+    <!-- 재추천 팝업 -->
+    <div class="popup-overlay" id="popup" onclick="hidePopup()">
+      <div class="popup" onclick="event.stopPropagation()">
+        <div class="popup-title">끼니 전체 다시 추천</div>
+        <div class="popup-sub">이 끼니의 최대 요리 시간을 조정할 수 있어요</div>
+        <div class="setting-row" style="border:none;padding:0">
+          <span class="setting-label">최대 요리 시간</span>
+          <div class="setting-right">
+            <button class="stepper-btn">−</button>
+            <span class="val">40분</span>
+            <button class="stepper-btn">+</button>
+          </div>
+        </div>
+        <div class="popup-btns">
+          <button class="btn-full btn-secondary-full" style="border-radius:10px" onclick="hidePopup()">취소</button>
+          <button class="btn-full btn-cta" style="border-radius:10px" onclick="hidePopup()">다시 추천받기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ 화면 3: 장보기 리스트 ══════════ -->
+  <div class="screen" id="screen-shopping">
+    <div class="header">
+      <span class="logo">🛒 장보기</span>
+      <button class="btn btn-ghost" style="font-size:12px">복사</button>
+    </div>
+    <div class="body">
+      <div class="period-label">3/23(월) ~ 3/29(일) 식단 기준</div>
+
+      <div class="card">
+        <div class="section-title" style="margin-bottom:8px">🥬 채소/과일</div>
+        <div class="shop-item"><input type="checkbox"> <span class="item-name">애호박</span> <span class="item-qty">1개</span></div>
+        <div class="shop-item"><input type="checkbox"> <span class="item-name">무</span> <span class="item-qty">1/2개</span></div>
+        <div class="shop-item"><input type="checkbox"> <span class="item-name">시금치</span> <span class="item-qty">1단</span></div>
+        <div class="shop-item"><input type="checkbox" checked> <span class="item-name done">대파</span> <span class="item-qty" style="color:#ccc">보유중</span></div>
+      </div>
+
+      <div class="card">
+        <div class="section-title" style="margin-bottom:8px">🥩 육류/해산물</div>
+        <div class="shop-item"><input type="checkbox"> <span class="item-name">소고기 (국거리)</span> <span class="item-qty">300g</span></div>
+        <div class="shop-item"><input type="checkbox"> <span class="item-name">달걀</span> <span class="item-qty">6개</span></div>
+      </div>
+
+      <input class="input-field" placeholder="+ 항목 직접 추가" />
+
+      <hr class="divider">
+
+      <div class="section-title">자주 사는 물품</div>
+      <div class="chip-row">
+        <span class="chip">계란</span>
+        <span class="chip">우유</span>
+        <span class="chip">두부</span>
+        <span class="chip">휴지</span>
+        <span class="chip">목록 관리 ✏️</span>
+      </div>
+    </div>
+    <div class="tab-bar">
+      <button class="tab" onclick="showScreen('home')"><span class="icon">🍽</span>식단</button>
+      <button class="tab active" onclick="showScreen('shopping')"><span class="icon">🛒</span>장보기</button>
+      <button class="tab" onclick="showScreen('recipe')"><span class="icon">📖</span>레시피</button>
+      <button class="tab" onclick="showScreen('settings')"><span class="icon">⚙️</span>설정</button>
+    </div>
+  </div>
+
+  <!-- ══════════ 화면 4: 레시피 상세 ══════════ -->
+  <div class="screen" id="screen-recipe">
+    <div class="header">
+      <button class="back-btn" onclick="showScreen('result')">← 소고기무국</button>
+      <span class="right">♡</span>
+    </div>
+    <div class="body">
+      <div class="recipe-header">
+        <div class="menu-title">소고기무국</div>
+        <div class="recipe-meta">
+          <div class="servings">
+            <button>−</button>
+            <span>4인분</span>
+            <button>+</button>
+          </div>
+          <span class="calorie">약 320 kcal</span>
+        </div>
+        <div class="weight-input">
+          소고기 중량 <input placeholder="200g" /> <span style="color:#aaa">(선택)</span>
+        </div>
+      </div>
+
+      <div class="section-title">재료</div>
+      <div class="card ingredient-list">
+        <div class="ingredient-row"><span>소고기 (국거리)</span><span class="qty">200g</span></div>
+        <div class="ingredient-row"><span>무</span><span class="qty">300g</span></div>
+        <div class="ingredient-row"><span>대파</span><span class="qty">1/2대</span></div>
+        <div class="ingredient-row"><span>된장</span><span class="qty">1.5큰술</span></div>
+        <div class="ingredient-row"><span>국간장</span><span class="qty">1큰술</span></div>
+        <div class="ingredient-row"><span>다진마늘</span><span class="qty">1큰술</span></div>
+      </div>
+
+      <div class="section-title">조리 순서</div>
+      <div class="card step-list">
+        <div class="step-row"><span class="step-num">1</span><span>소고기를 찬물에 담가 핏물을 20분간 제거한다</span></div>
+        <div class="step-row"><span class="step-num">2</span><span>무는 나박썰기로 얇게 썬다</span></div>
+        <div class="step-row"><span class="step-num">3</span><span>냄비에 참기름을 두르고 소고기를 중불에서 볶는다</span></div>
+        <div class="step-row"><span class="step-num">4</span><span>물 1.5L를 붓고 끓어오르면 무를 넣는다</span></div>
+        <div class="step-row"><span class="step-num">5</span><span>된장과 국간장으로 간을 맞추고 대파를 넣어 완성</span></div>
+      </div>
+
+      <div class="alert-box">
+        <div class="alert-title">⚠️ 허리디스크 주의</div>
+        앉아서 할 수 있는 재료 손질(무 썰기, 고기 핏물 제거)을 먼저 배치했어요. 오래 서있지 않아도 됩니다.
+      </div>
+
+    </div>
+    <div class="tab-bar">
+      <button class="tab" onclick="showScreen('home')"><span class="icon">🍽</span>식단</button>
+      <button class="tab" onclick="showScreen('shopping')"><span class="icon">🛒</span>장보기</button>
+      <button class="tab active" onclick="showScreen('recipe')"><span class="icon">📖</span>레시피</button>
+      <button class="tab" onclick="showScreen('settings')"><span class="icon">⚙️</span>설정</button>
+    </div>
+  </div>
+
+  <!-- ══════════ 화면 4-1: 통합 조리 순서 ══════════ -->
+  <div class="screen" id="screen-unified">
+    <div class="header">
+      <button class="back-btn" onclick="showScreen('recipe')">← 통합 조리 순서</button>
+    </div>
+    <div class="body">
+      <div class="recipe-header" style="background:#f0f7f3">
+        <div class="menu-title" style="font-size:16px">소고기무국 + 시금치나물</div>
+        <div style="font-size:13px;color:#555">총 예상 시간: <strong>약 38분</strong></div>
+      </div>
+
+      <div class="legend">
+        <span class="legend-item legend-muguuk">소고기무국</span>
+        <span class="legend-item legend-spinach">시금치나물</span>
+      </div>
+
+      <div class="card step-list">
+        <div class="unified-step">
+          <div class="unified-row">
+            <span class="unified-badge ub-muguuk">무국</span>
+            <span>소고기 찬물에 담가 핏물 제거 (20분)</span>
+          </div>
+          <div class="unified-arrow">↓ 담가두는 동안 →</div>
+        </div>
+        <div class="unified-step">
+          <div class="unified-row">
+            <span class="unified-badge ub-spinach">시금치</span>
+            <span>시금치 다듬기 (앉아서 가능)</span>
+          </div>
+        </div>
+        <div class="unified-step">
+          <div class="unified-row">
+            <span class="unified-badge ub-spinach">시금치</span>
+            <span>데칠 물 올리기</span>
+          </div>
+          <div class="unified-arrow">↓ 물 끓는 동안 →</div>
+        </div>
+        <div class="unified-step">
+          <div class="unified-row">
+            <span class="unified-badge ub-muguuk">무국</span>
+            <span>무 나박썰기 (앉아서 가능)</span>
+          </div>
+        </div>
+        <div class="unified-step">
+          <div class="unified-row">
+            <span class="unified-badge ub-spinach">시금치</span>
+            <span>데치기 + 물기 제거</span>
+          </div>
+        </div>
+        <div class="unified-step">
+          <div class="unified-row">
+            <span class="unified-badge ub-muguuk">무국</span>
+            <span>소고기 볶기 + 육수 끓이기 시작</span>
+          </div>
+          <div class="unified-arrow">↓ 끓는 동안 →</div>
+        </div>
+        <div class="unified-step">
+          <div class="unified-row">
+            <span class="unified-badge ub-spinach">시금치</span>
+            <span>양념 무치기 ✅ 완성</span>
+          </div>
+        </div>
+        <div class="unified-step">
+          <div class="unified-row">
+            <span class="unified-badge ub-muguuk">무국</span>
+            <span>간 맞추기 + 대파 넣기 ✅ 완성</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="tab-bar">
+      <button class="tab" onclick="showScreen('home')"><span class="icon">🍽</span>식단</button>
+      <button class="tab" onclick="showScreen('shopping')"><span class="icon">🛒</span>장보기</button>
+      <button class="tab active" onclick="showScreen('recipe')"><span class="icon">📖</span>레시피</button>
+      <button class="tab" onclick="showScreen('settings')"><span class="icon">⚙️</span>설정</button>
+    </div>
+  </div>
+
+  <!-- ══════════ 화면 5: 내 설정 ══════════ -->
+  <div class="screen" id="screen-settings">
+    <div class="header">
+      <span class="logo">⚙️ 내 설정</span>
+    </div>
+    <div class="body">
+
+      <!-- 가족 상황 -->
+      <div class="section-title">👨‍👩‍👧 가족 상황</div>
+      <div class="card">
+        <div class="chip-row">
+          <span class="chip info">허리디스크</span>
+          <span class="chip info">8살 아이</span>
+          <span class="chip info">밀가루 알레르기</span>
+          <span class="chip" style="background:#f5f5f5;color:#999;border-color:#ddd">+ 추가</span>
+        </div>
+        <div style="font-size:11px;color:#aaa;margin-top:8px">건강 조건, 식이 제한, 기피 재료 등을 입력하면 추천에 자동 반영돼요</div>
+      </div>
+
+      <!-- 요리 최대 시간 -->
+      <div class="section-title">⏱️ 끼니별 최대 요리 시간</div>
+      <div class="card">
+        <div class="setting-row">
+          <span class="setting-label">🌅 아침</span>
+          <div class="setting-right">
+            <button class="stepper-btn">−</button>
+            <span class="val">15분</span>
+            <button class="stepper-btn">+</button>
+          </div>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">☀️ 점심</span>
+          <div class="setting-right">
+            <button class="stepper-btn">−</button>
+            <span class="val">30분</span>
+            <button class="stepper-btn">+</button>
+          </div>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">🌙 저녁</span>
+          <div class="setting-right">
+            <button class="stepper-btn">−</button>
+            <span class="val">40분</span>
+            <button class="stepper-btn">+</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 조미료 -->
+      <div class="section-title">🧂 보유 조미료</div>
+      <div class="card">
+        <div class="chip-row">
+          <span class="chip selected">간장</span>
+          <span class="chip selected">된장</span>
+          <span class="chip selected">고추장</span>
+          <span class="chip selected">참기름</span>
+          <span class="chip selected">소금</span>
+          <span class="chip selected">설탕</span>
+          <span class="chip selected">다진마늘</span>
+          <span class="chip" style="background:#f5f5f5;color:#999;border-color:#ddd">+ 추가</span>
+        </div>
+        <button class="btn-full btn-secondary-full" style="margin-top:10px;border-radius:8px;font-size:13px">📷 사진으로 한번에 추가</button>
+      </div>
+
+      <!-- 급식 -->
+      <div class="section-title">🏫 급식 메뉴</div>
+      <div class="card">
+        <div style="font-size:13px;color:#555;margin-bottom:8px">이번 주 (3/23 ~ 3/27)</div>
+        <div style="font-size:13px;color:#777;line-height:1.8">
+          월: 잡채, 미역국, 배추김치<br>
+          화: 제육볶음, 콩나물국<br>
+          수: 닭볶음탕, 된장국<br>
+          목: 비빔밥, 북어국<br>
+          금: 돈까스, 시금치국
+        </div>
+        <button class="btn-full btn-secondary-full" style="margin-top:10px;border-radius:8px;font-size:13px">📷 새 급식표 업로드</button>
+      </div>
+
+      <!-- 계정 -->
+      <div class="section-title">🔐 계정</div>
+      <div class="card">
+        <div class="setting-row" style="border:none;padding:0">
+          <span class="setting-label" style="font-size:13px">Google로 로그인 중</span>
+          <button class="btn btn-ghost" style="font-size:12px">로그아웃</button>
+        </div>
+      </div>
+    </div>
+    <div class="tab-bar">
+      <button class="tab" onclick="showScreen('home')"><span class="icon">🍽</span>식단</button>
+      <button class="tab" onclick="showScreen('shopping')"><span class="icon">🛒</span>장보기</button>
+      <button class="tab" onclick="showScreen('recipe')"><span class="icon">📖</span>레시피</button>
+      <button class="tab active" onclick="showScreen('settings')"><span class="icon">⚙️</span>설정</button>
+    </div>
+  </div>
+
+</div><!-- /phone -->
+
+<script>
+  const screens = {
+    home: 'screen-home',
+    result: 'screen-result',
+    shopping: 'screen-shopping',
+    recipe: 'screen-recipe',
+    unified: 'screen-unified',
+    settings: 'screen-settings',
+  };
+  const navBtns = document.querySelectorAll('.screen-nav button');
+  const navKeys = ['home','result','shopping','recipe','unified','settings'];
+
+  function showScreen(name) {
+    Object.values(screens).forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('active');
+    });
+    const target = document.getElementById(screens[name]);
+    if (target) target.classList.add('active');
+
+    navBtns.forEach((btn, i) => {
+      btn.classList.toggle('active', navKeys[i] === name);
+    });
+  }
+
+  function showPopup() {
+    document.getElementById('popup').classList.add('show');
+  }
+  function hidePopup() {
+    document.getElementById('popup').classList.remove('show');
+  }
+</script>
+</body>
+</html>

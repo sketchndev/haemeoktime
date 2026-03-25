@@ -1,8 +1,8 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useMealPlan } from '../../contexts/MealPlanContext'
-import { reRecommendSingle, reRecommendMealType, deleteHistoryItem } from '../../api/meals'
+import { reRecommendSingle, reRecommendMealType, deleteHistoryItem, getWeekMeals } from '../../api/meals'
 import { generateShopping } from '../../api/shopping'
 
 const MEAL_LABELS = { breakfast: '🌅 아침', lunch: '☀️ 점심', dinner: '🌙 저녁' }
@@ -10,14 +10,42 @@ const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토']
 
 export default function MealPlanResult() {
   const navigate = useNavigate()
-  const { plan, updateMenu, replaceMeal, removeMenu } = useMealPlan()
+  const location = useLocation()
+  const fromWeekView = location.state?.fromWeekView === true
+  const { plan, setPlan, ingredients, updateMenu, replaceMeal, removeMenu } = useMealPlan()
   const todayStr = new Date().toLocaleDateString('en-CA')
-  const initialDate =
-    plan?.days?.find((d) => d.date === todayStr)?.date ||
-    plan?.days?.[0]?.date ||
-    ''
-  const [selectedDate, setSelectedDate] = useState(initialDate)
+  const [selectedDate, setSelectedDate] = useState('')
+  const [fetchLoading, setFetchLoading] = useState(false)
+
+  useEffect(() => {
+    if (!plan) {
+      setFetchLoading(true)
+      getWeekMeals()
+        .then((data) => {
+          if (data?.days?.length > 0) setPlan(data)
+        })
+        .catch(() => {})
+        .finally(() => setFetchLoading(false))
+    }
+  }, [])
+
+  useEffect(() => {
+    const target =
+      plan?.days?.find((d) => d.date === todayStr)?.date ||
+      plan?.days?.[0]?.date ||
+      ''
+    setSelectedDate(target)
+  }, [plan])
   const [loading, setLoading] = useState({})
+  const [shoppingLoading, setShoppingLoading] = useState(false)
+
+  if (fetchLoading) {
+    return (
+      <div className="p-4 text-center text-gray-400 py-20">
+        <p>식단을 불러오는 중...</p>
+      </div>
+    )
+  }
 
   if (!plan) {
     return (
@@ -73,14 +101,21 @@ export default function MealPlanResult() {
     const allMenus = plan.days.flatMap((d) =>
       d.meals.flatMap((m) => m.menus.map((menu) => menu.name))
     )
+    setShoppingLoading(true)
     try {
       await generateShopping(allMenus)
       navigate('/shopping')
       toast.success('장보기 리스트를 만들었어요')
-    } catch (e) { toast.error(e.message) }
+    } catch (e) {
+      toast.error(e.message)
+    } finally {
+      setShoppingLoading(false)
+    }
   }
 
   const currentDay = plan.days.find((d) => d.date === selectedDate) || plan.days[0]
+
+  const Spinner = () => <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
 
   return (
     <div className="p-4">
@@ -90,6 +125,15 @@ export default function MealPlanResult() {
           {plan.days.length === 1 ? '오늘 식단' : `${plan.days.length}일 식단`}
         </h1>
       </div>
+
+      {(() => {
+        const displayIngredients = fromWeekView ? plan.available_ingredients : ingredients
+        return displayIngredients ? (
+          <div className="bg-amber-50 rounded-xl px-3 py-2 mb-4 text-sm text-amber-800">
+            <span className="font-semibold">집에 있는 재료: </span>{displayIngredients}
+          </div>
+        ) : null
+      })()}
 
       <div className="flex gap-1 overflow-x-auto pb-2 mb-4">
         {plan.days.map((day) => {
@@ -124,9 +168,9 @@ export default function MealPlanResult() {
                       meal.menus.filter(m => m.history_id > 0).map(m => m.history_id)
                     )}
                     disabled={loading[mealKey]}
-                    className="text-xs text-green-600 border border-green-300 px-2 py-1 rounded-full"
+                    className="text-xs text-green-600 border border-green-300 px-2 py-1 rounded-full disabled:opacity-50 flex items-center gap-1"
                   >
-                    {loading[mealKey] ? '...' : '끼니↺'}
+                    {loading[mealKey] ? <><Spinner /> 바꾸는 중</> : '🔀 전체 바꾸기'}
                   </button>
                 )}
               </div>
@@ -152,9 +196,9 @@ export default function MealPlanResult() {
                             meal.menus.filter(m => m.history_id !== menu.history_id).map(m => m.name)
                           )}
                           disabled={loading[`single-${menu.history_id}`]}
-                          className="text-xs text-blue-500 px-1"
+                          className="text-xs text-blue-500 border border-blue-200 px-2 py-0.5 rounded-full disabled:opacity-50 flex items-center gap-1"
                         >
-                          {loading[`single-${menu.history_id}`] ? '...' : '↺'}
+                          {loading[`single-${menu.history_id}`] ? <><Spinner /> 바꾸는 중</> : '🔀 바꾸기'}
                         </button>
                         <button
                           onClick={() => navigate(`/recipes/${encodeURIComponent(menu.name)}`)}
@@ -182,7 +226,7 @@ export default function MealPlanResult() {
                   )}
                   className="mt-2 w-full text-xs text-amber-600 border border-amber-300 py-1 rounded-lg"
                 >
-                  ⚡ 함께 요리하기
+                  ⚡ 한꺼번에 요리하기
                 </button>
               )}
             </div>
@@ -192,9 +236,14 @@ export default function MealPlanResult() {
 
       <button
         onClick={handleGenerateShopping}
-        className="mt-4 w-full bg-green-500 text-white py-3 rounded-xl font-semibold"
+        disabled={shoppingLoading || Object.values(loading).some(Boolean)}
+        className="mt-4 w-full bg-green-500 text-white py-3 rounded-xl font-semibold disabled:opacity-60 flex items-center justify-center gap-2"
       >
-        🛒 장보기 리스트 만들기
+        {shoppingLoading ? (
+          <><Spinner /> 장보기 리스트 만드는 중...</>
+        ) : (
+          '🛒 장보기 리스트 만들기'
+        )}
       </button>
     </div>
   )

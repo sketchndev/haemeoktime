@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { recommendMeals, getTodayMeals, getWeekMeals } from '../../api/meals'
+import { recommendMealsStream, getTodayMeals, getWeekMeals } from '../../api/meals'
+import { getSchoolMeals } from '../../api/schoolMeals'
 import { useMealPlan } from '../../contexts/MealPlanContext'
 import LoadingSpinner from '../../components/LoadingSpinner'
 
 const PERIODS = [
   { key: 'today', label: '오늘' },
-  { key: 'week', label: '이번 주' },
+  { key: 'weekdays', label: '평일 한주간' },
   { key: 'custom', label: '📅 직접 선택' },
 ]
 const MEAL_TYPES = [
@@ -25,24 +26,51 @@ function isPastMeal(mealType) {
   return false
 }
 
+const STORAGE_KEY = 'mealPlanSettings'
+
+function loadSavedSettings() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return null
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
+
+function saveSettings({ period, mealTypes, useSchoolMeals }) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ period, mealTypes, useSchoolMeals }))
+  } catch { /* ignore quota errors */ }
+}
+
 export default function MealPlanHome() {
   const navigate = useNavigate()
-  const { setPlan } = useMealPlan()
-  const [period, setPeriod] = useState('today')
-  const [mealTypes, setMealTypes] = useState(['breakfast', 'lunch', 'dinner'])
-  const [useSchoolMeals, setUseSchoolMeals] = useState(false)
-  const [ingredients, setIngredients] = useState('')
+  const { setPlan, ingredients, setIngredients } = useMealPlan()
+  const saved = loadSavedSettings()
+  const [period, setPeriod] = useState(saved?.period ?? 'today')
+  const [mealTypes, setMealTypes] = useState(saved?.mealTypes ?? ['breakfast', 'lunch', 'dinner'])
+  const [useSchoolMeals, setUseSchoolMeals] = useState(saved?.useSchoolMeals ?? false)
   const [loading, setLoading] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [stage, setStage] = useState('')
   const [todayPlan, setTodayPlan] = useState(null)
-  const [todayLoading, setTodayLoading] = useState(true)  // true: avoid flash before fetch
+  const [todayLoading, setTodayLoading] = useState(true)
   const [weekLoading, setWeekLoading] = useState(false)
   const [showForm, setShowForm] = useState(false)
 
   useEffect(() => {
+    saveSettings({ period, mealTypes, useSchoolMeals })
+  }, [period, mealTypes, useSchoolMeals])
+
+  useEffect(() => {
     getTodayMeals()
       .then((data) => setTodayPlan(data))
-      .catch(() => {}) // silent fail — show form only
+      .catch(() => {})
       .finally(() => setTodayLoading(false))
+    getSchoolMeals()
+      .then((meals) => { if (meals?.length > 0 && !saved) setUseSchoolMeals(true) })
+      .catch(() => {})
   }, [])
 
   const [startDate, setStartDate] = useState('')
@@ -72,15 +100,23 @@ export default function MealPlanHome() {
       return
     }
     setLoading(true)
+    setProgress(0)
+    setStage('')
     try {
       const computedDates = computeDates()
-      const result = await recommendMeals({
-        period: period === 'custom' ? 'custom' : period,
-        dates: computedDates,
-        meal_types: mealTypes,
-        available_ingredients: ingredients,
-        use_school_meals: useSchoolMeals,
-      })
+      const result = await recommendMealsStream(
+        {
+          period: period === 'custom' ? 'custom' : period,
+          dates: computedDates,
+          meal_types: mealTypes,
+          available_ingredients: ingredients,
+          use_school_meals: useSchoolMeals,
+        },
+        ({ progress: p, stage: s }) => {
+          if (p != null) setProgress(p)
+          if (s) setStage(s)
+        },
+      )
       setPlan(result)
       navigate('/meals/result')
     } catch (e) {
@@ -95,7 +131,7 @@ export default function MealPlanHome() {
     try {
       const result = await getWeekMeals()
       setPlan(result)
-      navigate('/meals/result')
+      navigate('/meals/result', { state: { fromWeekView: true } })
     } catch (e) {
       toast.error(e.message)
     } finally {
@@ -103,7 +139,7 @@ export default function MealPlanHome() {
     }
   }
 
-  if (loading) return <LoadingSpinner text="AI가 식단을 추천 중..." />
+  if (loading) return <LoadingSpinner text="AI가 식단을 추천 중..." progress={progress} stage={stage} />
 
   return (
     <div className="p-4 space-y-5">
@@ -111,7 +147,7 @@ export default function MealPlanHome() {
         <h1 className="text-2xl font-bold">해먹타임 🍽</h1>
       </div>
 
-      {!todayLoading && todayPlan?.days?.length > 0 && (() => {
+      {!todayLoading && todayPlan?.days?.length > 0 && !showForm && (() => {
         const todayDate = todayPlan.days[0].date
         const visibleMeals = todayPlan.days[0].meals.filter(
           (m) => m.menus.length > 0 && !isPastMeal(m.meal_type)
@@ -123,28 +159,31 @@ export default function MealPlanHome() {
             <div className="space-y-2">
               {visibleMeals.map((meal) => {
                 const menuNames = meal.menus.map((m) => m.name)
-                const handleRecipe = () => {
-                  if (menuNames.length >= 2) {
-                    navigate(
-                      `/meals/result/${todayDate}/${meal.meal_type}/cooking`,
-                      { state: { menus: menuNames } }
-                    )
-                  } else {
-                    navigate(`/recipes/${encodeURIComponent(menuNames[0])}`)
-                  }
-                }
                 return (
                   <div key={meal.meal_type} className="bg-white rounded-xl shadow-sm p-3">
                     <p className="font-semibold text-sm mb-1">{MEAL_LABELS[meal.meal_type]}</p>
-                    <p className="text-sm text-gray-700 mb-2">
-                      {menuNames.join('  •  ')}
-                    </p>
-                    <button
-                      onClick={handleRecipe}
-                      className="text-xs text-amber-600 border border-amber-300 px-3 py-1 rounded-full"
-                    >
-                      🍳 레시피 보기
-                    </button>
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {menuNames.map((name) => (
+                        <button
+                          key={name}
+                          onClick={() => navigate(`/recipes/${encodeURIComponent(name)}`)}
+                          className="inline-block bg-gray-100 text-gray-700 text-xs px-2.5 py-1 rounded-full hover:bg-amber-50 hover:text-amber-700 transition-colors"
+                        >
+                          {name}
+                        </button>
+                      ))}
+                    </div>
+                    {menuNames.length >= 2 && (
+                      <button
+                        onClick={() => navigate(
+                          `/meals/result/${todayDate}/${meal.meal_type}/cooking`,
+                          { state: { menus: menuNames } }
+                        )}
+                        className="text-xs text-amber-600 border border-amber-300 px-3 py-1 rounded-full"
+                      >
+                        🍳 한꺼번에 요리하기
+                      </button>
+                    )}
                   </div>
                 )
               })}
@@ -152,7 +191,7 @@ export default function MealPlanHome() {
             <button
               onClick={handleViewWeek}
               disabled={weekLoading}
-              className="mt-3 w-full text-sm text-green-700 border border-green-300 py-2 rounded-xl"
+              className="mt-2 w-full text-sm text-green-700 border border-green-300 py-2 rounded-xl"
             >
               {weekLoading ? '...' : '📅 이번 주 식단 보기'}
             </button>

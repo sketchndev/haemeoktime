@@ -53,6 +53,8 @@ class RecommendRequest(BaseModel):
 class MenuItem(BaseModel):
     history_id: int
     name: str
+    main_ingredient: Optional[str] = None
+    main_ingredient_unit: Optional[str] = None
 
 
 class MealSlot(BaseModel):
@@ -92,6 +94,7 @@ class RecipeRequest(BaseModel):
     menu_name: str
     servings: int
     main_ingredient_weight: Optional[int] = None
+    user_context: Optional[str] = None
 
 
 class Ingredient(BaseModel):
@@ -103,9 +106,10 @@ class RecipeResponse(BaseModel):
     menu_name: str
     servings: int
     calories: int
+    main_ingredient: Optional[str] = None
+    main_ingredient_unit: Optional[str] = None
     ingredients: list[Ingredient]
     steps: list[str]
-    health_notes: Optional[str] = None
 
 
 class ExtractMainIngredientsRequest(BaseModel):
@@ -118,6 +122,7 @@ class CombinedCookingRequest(BaseModel):
     menus: list[str]
     servings: Optional[int] = None
     main_ingredient_weights: Optional[dict[str, str]] = None
+    user_context: Optional[str] = None
 
 
 class CookingStep(BaseModel):
