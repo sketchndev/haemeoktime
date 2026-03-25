@@ -77,11 +77,11 @@ def init_db(db_path: str | None = None) -> None:
     # Migration: add new columns to existing favorite_recipes table
     try:
         conn.execute("ALTER TABLE favorite_recipes ADD COLUMN recipe_type TEXT NOT NULL DEFAULT 'individual'")
-    except Exception:
+    except sqlite3.OperationalError:
         pass  # Column already exists
     try:
         conn.execute("ALTER TABLE favorite_recipes ADD COLUMN recipe_data TEXT")
-    except Exception:
+    except sqlite3.OperationalError:
         pass  # Column already exists
     conn.execute("""
         INSERT OR IGNORE INTO cooking_time_settings (meal_type, max_minutes)
