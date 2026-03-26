@@ -1,5 +1,5 @@
 import client, { fetchSSE } from './client'
-import { getRecipe, setRecipe, getMainIngredient, setMainIngredient, getCombinedCooking, setCombinedCooking } from './recipeCache'
+import { getRecipe, setRecipe, getMainIngredient, setMainIngredient, getCombinedCooking, setCombinedCooking, getAnyCachedRecipe } from './recipeCache'
 
 export const generateRecipe = async (menuName, servings, mainIngredientWeight = null, userContext = null) => {
   if (!userContext) {
@@ -41,7 +41,7 @@ export const generateRecipeStream = async (menuName, servings, mainIngredientWei
   return data
 }
 
-export { getMainIngredient }
+export { getMainIngredient, getAnyCachedRecipe }
 
 export const extractMainIngredients = async (menus) => {
   const data = await client.post('/recipes/extract-main-ingredients', { menus })

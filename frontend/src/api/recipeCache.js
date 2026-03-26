@@ -34,6 +34,18 @@ export const setMainIngredient = (menuName, data) => {
   } catch {}
 }
 
+export const getAnyCachedRecipe = (menuName) => {
+  try {
+    for (let s = 2; s <= 10; s++) {
+      const raw = localStorage.getItem(KEY(menuName, s))
+      if (raw) return JSON.parse(raw)
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
 export const getCombinedCooking = (menus) => {
   try {
     const raw = localStorage.getItem(COMBINED_KEY(menus))

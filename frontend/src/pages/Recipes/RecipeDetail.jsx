@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { generateRecipe, generateRecipeStream, addFavorite, deleteFavorite, getFavorites, getMainIngredient } from '../../api/recipes'
+import { generateRecipe, generateRecipeStream, addFavorite, deleteFavorite, getFavorites, getMainIngredient, getAnyCachedRecipe } from '../../api/recipes'
 import LoadingSpinner from '../../components/LoadingSpinner'
 
 export default function RecipeDetail() {
@@ -22,6 +22,7 @@ export default function RecipeDetail() {
   const [mainIngredientInfo, setMainIngredientInfo] = useState(null)
   const [progress, setProgress] = useState(0)
   const [progressStage, setProgressStage] = useState('')
+  const [showSettings, setShowSettings] = useState(false)
 
   const load = async (s, w, userContext = null) => {
     try {
@@ -71,9 +72,22 @@ export default function RecipeDetail() {
           unit: state.recipeData.main_ingredient_unit || 'g',
         })
       }
+    } else {
+      const cached = getAnyCachedRecipe(decodedName)
+      if (cached) {
+        setRecipe(cached)
+        setServings(cached.servings || 2)
+        setPhase('result')
+        if (cached.main_ingredient) {
+          setMainIngredientInfo({
+            main_ingredient: cached.main_ingredient,
+            unit: cached.main_ingredient_unit || 'g',
+          })
+        }
+      }
     }
-    const cached = getMainIngredient(decodedName)
-    if (cached) setMainIngredientInfo(cached)
+    const cachedIng = getMainIngredient(decodedName)
+    if (cachedIng) setMainIngredientInfo(cachedIng)
     getFavorites().then((favs) => {
       const fav = favs.find((f) => f.menu_name === decodedName)
       if (fav) { setFavorited(true); setFavoriteId(fav.id) }
@@ -91,6 +105,21 @@ export default function RecipeDetail() {
       setPhase('result')
     } else {
       setPhase('select')
+    }
+  }
+
+  const handleRegenerate = async () => {
+    setShowSettings(false)
+    setPhase('loading')
+    setProgress(0)
+    setProgressStage('')
+    const w = tab === 'weight' && weight ? parseInt(weight) : null
+    const s = tab === 'servings' ? servings : null
+    const data = await loadStream(s || 2, w)
+    if (data) {
+      setPhase('result')
+    } else {
+      setPhase('result') // keep showing previous result on error
     }
   }
 
@@ -138,7 +167,15 @@ export default function RecipeDetail() {
         <button onClick={() => navigate(-1)} className="text-xl">←</button>
         <h1 className="text-lg font-bold flex-1">{decodedName}</h1>
         {phase === 'result' && (
-          <button onClick={toggleFavorite} className="text-2xl">{favorited ? '♥' : '♡'}</button>
+          <>
+            <button
+              onClick={() => setShowSettings(v => !v)}
+              className="text-sm px-2 py-1 rounded-lg border border-gray-300 text-gray-500"
+            >
+              {recipe?.servings ? `${recipe.servings}인분` : '설정'} ▾
+            </button>
+            <button onClick={toggleFavorite} className="text-2xl">{favorited ? '♥' : '♡'}</button>
+          </>
         )}
       </div>
 
@@ -219,6 +256,76 @@ export default function RecipeDetail() {
 
       {/* 로딩 */}
       {phase === 'loading' && <LoadingSpinner text="" progress={progress} stage={progressStage} />}
+
+      {/* 인원/주재료 변경 패널 */}
+      {phase === 'result' && showSettings && (
+        <div className="bg-gray-50 rounded-xl p-4 mb-4 border border-gray-200">
+          <div className="flex rounded-lg bg-gray-100 p-0.5 mb-3">
+            <button
+              onClick={() => setTab('servings')}
+              className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                tab === 'servings' ? 'bg-white shadow text-green-600' : 'text-gray-500'
+              }`}
+            >
+              인원 기준
+            </button>
+            <button
+              onClick={() => setTab('weight')}
+              className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                tab === 'weight' ? 'bg-white shadow text-green-600' : 'text-gray-500'
+              }`}
+            >
+              주재료 중량 기준
+            </button>
+          </div>
+
+          {tab === 'servings' && (
+            <div className="flex items-center justify-center gap-3 mb-3">
+              <button
+                onClick={() => setServings(s => Math.max(2, s - 1))}
+                className="w-8 h-8 rounded-full border-2 border-gray-300 text-sm font-bold text-gray-600 flex items-center justify-center"
+              >
+                −
+              </button>
+              <span className="text-lg font-bold w-14 text-center">{servings}인분</span>
+              <button
+                onClick={() => setServings(s => Math.min(10, s + 1))}
+                className="w-8 h-8 rounded-full border-2 border-green-400 text-sm font-bold text-green-600 flex items-center justify-center"
+              >
+                +
+              </button>
+            </div>
+          )}
+
+          {tab === 'weight' && (
+            <div className="mb-3">
+              <div className="flex items-center justify-center gap-2">
+                {mainIngredientInfo && (
+                  <span className="text-xs font-medium text-gray-700">{mainIngredientInfo.main_ingredient}</span>
+                )}
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min="0"
+                  placeholder="0"
+                  value={weight}
+                  onChange={(e) => { if (e.target.value === '' || Number(e.target.value) >= 0) setWeight(e.target.value) }}
+                  className="w-20 text-right border-2 border-gray-200 rounded-lg px-2 py-1.5 text-sm font-semibold focus:border-green-400 outline-none"
+                />
+                <span className="text-sm text-gray-500">{mainIngredientInfo?.unit || 'g'}</span>
+              </div>
+            </div>
+          )}
+
+          <button
+            onClick={handleRegenerate}
+            disabled={tab === 'weight' && !weight}
+            className="w-full bg-green-500 text-white py-2 rounded-xl text-sm font-semibold disabled:opacity-40"
+          >
+            이 조건으로 다시 만들기
+          </button>
+        </div>
+      )}
 
       {/* 결과 */}
       {phase === 'result' && recipe && (
