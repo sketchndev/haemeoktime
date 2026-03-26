@@ -1,6 +1,7 @@
 import axios from 'axios'
 
-const client = axios.create({ baseURL: '/api' })
+const apiBase = `${import.meta.env.BASE_URL}api`.replace(/\/\//g, '/')
+const client = axios.create({ baseURL: apiBase })
 
 client.interceptors.response.use(
   (res) => res.data,
@@ -20,7 +21,7 @@ export default client
  * @returns {Promise<any>} 최종 result
  */
 export async function fetchSSE(url, body, onEvent) {
-  const res = await fetch(`/api${url}`, {
+  const res = await fetch(`${apiBase}${url}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

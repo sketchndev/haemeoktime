@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { getSchoolMeals, uploadSchoolMealPhoto } from '../../api/schoolMeals'
 import LoadingSpinner from '../../components/LoadingSpinner'
+import compressImage from '../../utils/compressImage'
 
 const DAY_NAMES = { 1: '월', 2: '화', 3: '수', 4: '목', 5: '금', 6: '토', 0: '일' }
 
@@ -26,7 +27,8 @@ export default function SchoolMealsPage() {
     if (!file) return
     setUploading(true)
     try {
-      await uploadSchoolMealPhoto(file)
+      const compressed = file.type.startsWith('image/') ? await compressImage(file) : file
+      await uploadSchoolMealPhoto(compressed)
       await load()
       toast.success('급식표를 저장했어요')
     } catch (e) {

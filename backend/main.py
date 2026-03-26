@@ -19,7 +19,7 @@ app = FastAPI(title="해먹타임 API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173", "http://sketch-and-dev.com"],
     allow_methods=["*"],
     allow_headers=["*"],
 )

@@ -7,6 +7,7 @@ import {
   updateCookingTimes, parseCondimentPhoto, updateMealPlanSettings,
 } from '../../api/profile'
 import TagChip from '../../components/TagChip'
+import compressImage from '../../utils/compressImage'
 
 const MEAL_LABELS = { breakfast: '🌅 아침', lunch: '☀️ 점심', dinner: '🌙 저녁' }
 
@@ -75,7 +76,8 @@ export default function SettingsPage() {
     if (!file) return
     setPhotoLoading(true)
     try {
-      const result = await parseCondimentPhoto(file)
+      const compressed = await compressImage(file)
+      const result = await parseCondimentPhoto(compressed)
       for (const name of result.extracted) {
         await addCondiment(name)
       }
@@ -161,7 +163,12 @@ export default function SettingsPage() {
           <span>📷 사진으로 한 번에 추가</span>
           <input type="file" accept="image/*" className="hidden" onChange={handleCondimentPhoto} disabled={photoLoading} />
         </label>
-        {photoLoading && <p className="text-xs text-gray-400 mt-1">AI가 조미료를 분석 중...</p>}
+        {photoLoading && (
+          <p className="flex items-center gap-1.5 text-xs text-gray-400 mt-1">
+            <span className="w-3.5 h-3.5 border-2 border-green-400 border-t-transparent rounded-full animate-spin" />
+            AI가 조미료를 분석 중...
+          </p>
+        )}
       </section>
 
       <section>

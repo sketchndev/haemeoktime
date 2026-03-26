@@ -18,7 +18,7 @@ export default function App() {
   return (
     <ProfileProvider>
       <MealPlanProvider>
-        <BrowserRouter>
+        <BrowserRouter basename={import.meta.env.BASE_URL}>
           <Toaster position="top-center" />
           <div className="max-w-[430px] mx-auto min-h-screen bg-gray-50 pb-16">
             <Routes>
