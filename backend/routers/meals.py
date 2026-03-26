@@ -130,6 +130,11 @@ def _process_gemini_result(result: dict, body: RecommendRequest, dates, composit
                 (target_date, mt),
             )
 
+    # 새 식단 추천 시 장보기 리스트 초기화
+    today = date.today()
+    week_start = (today - timedelta(days=today.weekday())).isoformat()
+    db.execute("DELETE FROM shopping_items WHERE week_start = ?", (week_start,))
+
     days_out = []
     for idx, target_date in enumerate(dates):
         gemini_day = None
