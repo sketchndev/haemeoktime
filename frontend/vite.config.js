@@ -6,9 +6,10 @@ export default defineConfig({
   base: '/haemeoktime/',
   server: {
     proxy: {
-      '/api': {
+      '/haemeoktime/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/haemeoktime/, ''),
       },
     },
   },

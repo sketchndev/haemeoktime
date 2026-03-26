@@ -224,6 +224,8 @@ class GeminiService:
 - 가족: {family_tags}
 - 계량은 큰술/작은술로 표기 (T/t 기호 사용 금지)
 - 칼로리는 1인분 기준 추정값
+- steps 배열: 재료 사용 시 반드시 분량 포함
+- steps 예시: ["소고기 200g을 한입 크기로 썰어 준비", "팬에 식용유 1큰술 두르고 중불로 가열"]
 {context_block}
 
 # 응답 (JSON만)
@@ -232,7 +234,7 @@ class GeminiService:
   "main_ingredient": "주재료명 (예: 소고기, 두부, 시금치 등 이 요리의 핵심 재료 1가지)",
   "main_ingredient_unit": "해당 주재료의 자연스러운 계량 단위 (예: g, 개, 모 등)",
   "ingredients": [{{"name": "재료명", "amount": "계량"}}],
-  "steps": ["조리 단계"]}}"""
+  "steps": ["조리 단계(재료명과 분량 포함)"]}}"""
 
     def generate_recipe(
         self, menu_name: str, servings: int, family_tags: list,
