@@ -51,7 +51,10 @@ def _build_plan_from_rows(rows) -> dict:
             days_dict[d] = {}
         if mt not in days_dict[d]:
             days_dict[d][mt] = []
-        days_dict[d][mt].append({"history_id": r["id"], "name": r["menu_name"]})
+        days_dict[d][mt].append({
+            "history_id": r["id"], "name": r["menu_name"],
+            "main_ingredient": r["main_ingredient"], "main_ingredient_unit": r["main_ingredient_unit"],
+        })
 
     days_out = []
     for d, meals_dict in days_dict.items():
@@ -161,8 +164,8 @@ def _process_gemini_result(result: dict, body: RecommendRequest, dates, composit
                     main_ing = None
                     main_ing_unit = None
                 cur = db.execute(
-                    "INSERT INTO meal_history (date, meal_type, menu_name) VALUES (?, ?, ?)",
-                    (target_date, meal["meal_type"], menu_name),
+                    "INSERT INTO meal_history (date, meal_type, menu_name, main_ingredient, main_ingredient_unit) VALUES (?, ?, ?, ?, ?)",
+                    (target_date, meal["meal_type"], menu_name, main_ing, main_ing_unit),
                 )
                 menus_out.append({
                     "history_id": cur.lastrowid, "name": menu_name,
@@ -257,8 +260,8 @@ def rerecommend_single(
 
     db.execute("DELETE FROM meal_history WHERE id = ?", (body.history_id,))
     cur = db.execute(
-        "INSERT INTO meal_history (date, meal_type, menu_name) VALUES (?, ?, ?)",
-        (body.date, body.meal_type, result["menu_name"]),
+        "INSERT INTO meal_history (date, meal_type, menu_name, main_ingredient, main_ingredient_unit) VALUES (?, ?, ?, ?, ?)",
+        (body.date, body.meal_type, result["menu_name"], result.get("main_ingredient"), result.get("main_ingredient_unit")),
     )
     return {
         "history_id": cur.lastrowid, "name": result["menu_name"],
@@ -300,8 +303,8 @@ def rerecommend_meal_type(
             main_ing = None
             main_ing_unit = None
         cur = db.execute(
-            "INSERT INTO meal_history (date, meal_type, menu_name) VALUES (?, ?, ?)",
-            (body.date, body.meal_type, menu_name),
+            "INSERT INTO meal_history (date, meal_type, menu_name, main_ingredient, main_ingredient_unit) VALUES (?, ?, ?, ?, ?)",
+            (body.date, body.meal_type, menu_name, main_ing, main_ing_unit),
         )
         menus_out.append({
             "history_id": cur.lastrowid, "name": menu_name,
@@ -315,7 +318,7 @@ def rerecommend_meal_type(
 def get_today_meals(db=Depends(get_db)):
     today = date.today().isoformat()
     rows = db.execute(
-        "SELECT id, date, meal_type, menu_name FROM meal_history "
+        "SELECT id, date, meal_type, menu_name, main_ingredient, main_ingredient_unit FROM meal_history "
         "WHERE date = ? ORDER BY id",
         (today,)
     ).fetchall()
@@ -328,7 +331,7 @@ def get_week_meals(db=Depends(get_db)):
     monday = today - timedelta(days=today.weekday())
     sunday = monday + timedelta(days=6)
     rows = db.execute(
-        "SELECT id, date, meal_type, menu_name FROM meal_history "
+        "SELECT id, date, meal_type, menu_name, main_ingredient, main_ingredient_unit FROM meal_history "
         "WHERE date >= ? AND date <= ? ORDER BY date, id",
         (monday.isoformat(), sunday.isoformat())
     ).fetchall()

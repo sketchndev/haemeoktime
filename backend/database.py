@@ -24,6 +24,8 @@ CREATE TABLE IF NOT EXISTS meal_history (
     date DATE NOT NULL,
     meal_type TEXT NOT NULL,
     menu_name TEXT NOT NULL,
+    main_ingredient TEXT,
+    main_ingredient_unit TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -81,6 +83,14 @@ def init_db(db_path: str | None = None) -> None:
     conn = sqlite3.connect(path)
     conn.executescript(SCHEMA)
     # Migration: add new columns to existing favorite_recipes table
+    try:
+        conn.execute("ALTER TABLE meal_history ADD COLUMN main_ingredient TEXT")
+    except sqlite3.OperationalError:
+        pass  # Column already exists
+    try:
+        conn.execute("ALTER TABLE meal_history ADD COLUMN main_ingredient_unit TEXT")
+    except sqlite3.OperationalError:
+        pass  # Column already exists
     try:
         conn.execute("ALTER TABLE favorite_recipes ADD COLUMN recipe_type TEXT NOT NULL DEFAULT 'individual'")
     except sqlite3.OperationalError:

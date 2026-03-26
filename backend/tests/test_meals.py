@@ -186,3 +186,52 @@ def test_get_week_meals_empty(client):
     res = client.get("/api/meals/week")
     assert res.status_code == 200
     assert res.json() == {"days": []}
+
+
+def test_recommend_saves_main_ingredient(client, mock_gemini):
+    mock_gemini.recommend_meals.return_value = {
+        "days": [{
+            "date": "2026-03-23",
+            "meals": [{"meal_type": "dinner", "menus": [
+                {"name": "된장찌개", "main_ingredient": "두부", "main_ingredient_unit": "모"},
+            ]}],
+        }]
+    }
+    res = client.post("/api/meals/recommend", json={
+        "period": "today", "dates": ["2026-03-23"],
+        "meal_types": ["dinner"], "available_ingredients": "", "use_school_meals": False,
+    })
+    assert res.status_code == 200
+    menu = res.json()["days"][0]["meals"][0]["menus"][0]
+    assert menu["main_ingredient"] == "두부"
+    assert menu["main_ingredient_unit"] == "모"
+
+    import sqlite3
+    from database import get_db_path
+    conn = sqlite3.connect(get_db_path())
+    conn.row_factory = sqlite3.Row
+    row = conn.execute("SELECT main_ingredient, main_ingredient_unit FROM meal_history WHERE menu_name = '된장찌개'").fetchone()
+    conn.close()
+    assert row["main_ingredient"] == "두부"
+    assert row["main_ingredient_unit"] == "모"
+
+
+def test_get_today_meals_includes_main_ingredient(client):
+    from database import get_db_path
+    import sqlite3
+    from datetime import date
+
+    today = date.today().isoformat()
+    conn = sqlite3.connect(get_db_path())
+    conn.execute(
+        "INSERT INTO meal_history (date, meal_type, menu_name, main_ingredient, main_ingredient_unit) VALUES (?, 'dinner', '된장찌개', '두부', '모')",
+        (today,)
+    )
+    conn.commit()
+    conn.close()
+
+    res = client.get("/api/meals/today")
+    assert res.status_code == 200
+    menu = res.json()["days"][0]["meals"][0]["menus"][0]
+    assert menu["main_ingredient"] == "두부"
+    assert menu["main_ingredient_unit"] == "모"
