@@ -1,3 +1,4 @@
+import json
 from datetime import date, timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from database import get_db
@@ -42,6 +43,13 @@ def generate_shopping(
 
     # 기존 자동 항목 삭제
     db.execute("DELETE FROM shopping_items WHERE week_start = ? AND is_auto = TRUE", (week_start,))
+
+    # 메뉴별 재료 정보 저장
+    for mi in result.get("menu_ingredients", []):
+        db.execute(
+            "INSERT OR REPLACE INTO menu_ingredients (menu_name, ingredients) VALUES (?, ?)",
+            (mi["menu"], json.dumps(mi["ingredients"], ensure_ascii=False)),
+        )
 
     items_out = []
     for item in result.get("items", []):

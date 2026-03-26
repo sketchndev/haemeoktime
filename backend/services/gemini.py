@@ -211,9 +211,13 @@ class GeminiService:
         self, menu_name: str, servings: int, family_tags: list,
         main_ingredient_weight: Optional[int],
         user_context: Optional[str] = None,
+        saved_ingredients: Optional[list] = None,
     ) -> str:
         weight_str = f"주재료 {main_ingredient_weight}g 기준으로 " if main_ingredient_weight else ""
         context_block = f"\n\n# 사용자 상황\n{user_context}\n→ 위 상황을 반영하여 레시피를 조정하세요. 없는 재료는 대체재를 사용하거나 분량을 조정하세요." if user_context else ""
+        ingredients_block = ""
+        if saved_ingredients:
+            ingredients_block = f"\n\n# 사용할 재료 (반드시 이 재료들로 레시피를 작성하세요)\n{json.dumps(saved_ingredients, ensure_ascii=False)}\n→ 위 재료 목록을 기반으로 {servings}인분에 맞게 분량을 조정하세요. 재료를 임의로 추가하거나 빼지 마세요."
         return f"""# 역할
 가정 요리 전문가.
 
@@ -226,7 +230,7 @@ class GeminiService:
 - 칼로리는 1인분 기준 추정값
 - steps 배열: 재료 사용 시 반드시 분량 포함
 - steps 예시: ["소고기 200g을 한입 크기로 썰어 준비", "팬에 식용유 1큰술 두르고 중불로 가열"]
-{context_block}
+{context_block}{ingredients_block}
 
 # 응답 (JSON만)
 {{"menu_name": "string", "servings": 숫자, "calories": 숫자,
@@ -240,10 +244,12 @@ class GeminiService:
         self, menu_name: str, servings: int, family_tags: list,
         main_ingredient_weight: Optional[int],
         user_context: Optional[str] = None,
+        saved_ingredients: Optional[list] = None,
     ) -> dict:
         prompt = self.build_recipe_prompt(
             menu_name, servings, family_tags,
             main_ingredient_weight, user_context,
+            saved_ingredients,
         )
         return self._call(prompt)
 
@@ -363,15 +369,17 @@ class GeminiService:
 가정 식단 전문가.
 
 # 작업
-아래 메뉴들의 장보기 목록을 만드세요: {menus}
+아래 메뉴들의 장보기 목록과 각 메뉴별 필요한 재료를 함께 만드세요: {menus}
 
 # 조건
 - 이미 보유한 조미료(제외): {condiments}
-- 여러 메뉴에 공통으로 필요한 재료는 합산하여 1개 항목으로
-- 카테고리: 채소/과일, 육류/해산물, 유제품/계란, 가공식품, 기타
+- items: 여러 메뉴에 공통으로 필요한 재료는 합산하여 1개 항목으로
+- items 카테고리: 채소/과일, 육류/해산물, 유제품/계란, 가공식품, 기타
+- menu_ingredients: 각 메뉴별로 필요한 모든 재료와 2인분 기준 분량 (합산 전 개별 목록, 조미료 포함)
 
 # 응답 (JSON만)
-{{"items": [{{"name": "재료명", "quantity": "수량", "category": "카테고리"}}]}}"""
+{{"items": [{{"name": "재료명", "quantity": "수량", "category": "카테고리"}}],
+  "menu_ingredients": [{{"menu": "메뉴명", "ingredients": [{{"name": "재료명", "amount": "분량"}}]}}]}}"""
         return self._call(prompt)
 
     # ── 조미료 사진 인식 ──────────────────────────────────

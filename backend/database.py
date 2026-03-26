@@ -63,6 +63,12 @@ CREATE TABLE IF NOT EXISTS meal_plan_settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS menu_ingredients (
+    menu_name TEXT PRIMARY KEY,
+    ingredients TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 """
 
 

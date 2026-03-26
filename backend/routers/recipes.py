@@ -12,14 +12,21 @@ def _sse(data: dict) -> str:
 router = APIRouter()
 
 
+def _get_saved_ingredients(db, menu_name: str) -> list | None:
+    row = db.execute("SELECT ingredients FROM menu_ingredients WHERE menu_name = ?", (menu_name,)).fetchone()
+    return json.loads(row["ingredients"]) if row else None
+
+
 @router.post("/recipes/generate", response_model=RecipeResponse)
 def generate_recipe(body: RecipeRequest, db=Depends(get_db), gemini: GeminiService = Depends(get_gemini)):
     tags = [r["tag"] for r in db.execute("SELECT tag FROM family_tags").fetchall()]
+    saved_ingredients = _get_saved_ingredients(db, body.menu_name)
     try:
         result = gemini.generate_recipe(
             menu_name=body.menu_name, servings=body.servings,
             family_tags=tags, main_ingredient_weight=body.main_ingredient_weight,
             user_context=body.user_context,
+            saved_ingredients=saved_ingredients,
         )
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
@@ -29,6 +36,7 @@ def generate_recipe(body: RecipeRequest, db=Depends(get_db), gemini: GeminiServi
 @router.post("/recipes/generate/stream")
 def generate_recipe_stream(body: RecipeRequest, db=Depends(get_db), gemini: GeminiService = Depends(get_gemini)):
     tags = [r["tag"] for r in db.execute("SELECT tag FROM family_tags").fetchall()]
+    saved_ingredients = _get_saved_ingredients(db, body.menu_name)
 
     def event_generator():
         yield _sse({"progress": 5, "stage": "설정 불러오는 중..."})
@@ -37,6 +45,7 @@ def generate_recipe_stream(body: RecipeRequest, db=Depends(get_db), gemini: Gemi
             menu_name=body.menu_name, servings=body.servings,
             family_tags=tags, main_ingredient_weight=body.main_ingredient_weight,
             user_context=body.user_context,
+            saved_ingredients=saved_ingredients,
         )
 
         yield _sse({"progress": 10, "stage": "AI에게 요청 중..."})
