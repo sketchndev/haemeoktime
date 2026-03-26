@@ -34,6 +34,11 @@ def generate_shopping(
     gemini: GeminiService = Depends(get_gemini),
 ):
     week_start = _current_week_start()
+    row = db.execute(
+        "SELECT value FROM meal_plan_settings WHERE key = 'plan_approved'"
+    ).fetchone()
+    if not row or row["value"] != "true":
+        raise HTTPException(status_code=403, detail="식단을 먼저 승인해주세요")
     condiments = [r["name"] for r in db.execute("SELECT name FROM condiments").fetchall()]
 
     try:

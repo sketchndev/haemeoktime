@@ -31,6 +31,15 @@ def test_delete_item(client):
 
 
 def test_generate_replaces_auto_items(client, mock_gemini):
+    mock_gemini.recommend_meals.return_value = {
+        "days": [{"date": "2026-03-23", "meals": [{"meal_type": "dinner", "menus": ["메뉴"]}]}]
+    }
+    client.post("/api/meals/recommend", json={
+        "period": "today", "dates": ["2026-03-23"],
+        "meal_types": ["dinner"], "available_ingredients": "", "use_school_meals": False,
+    })
+    client.put("/api/meals/approve")
+
     mock_gemini.generate_shopping_list.return_value = {
         "items": [{"name": "애호박", "quantity": "1개", "category": "채소/과일"}]
     }
@@ -50,6 +59,15 @@ def test_generate_replaces_auto_items(client, mock_gemini):
 
 
 def test_generate_preserves_manual_items(client, mock_gemini):
+    mock_gemini.recommend_meals.return_value = {
+        "days": [{"date": "2026-03-23", "meals": [{"meal_type": "dinner", "menus": ["메뉴"]}]}]
+    }
+    client.post("/api/meals/recommend", json={
+        "period": "today", "dates": ["2026-03-23"],
+        "meal_types": ["dinner"], "available_ingredients": "", "use_school_meals": False,
+    })
+    client.put("/api/meals/approve")
+
     client.post("/api/shopping/items", json={"name": "수동항목"})
     mock_gemini.generate_shopping_list.return_value = {
         "items": [{"name": "자동항목", "quantity": "1개", "category": "기타"}]
@@ -60,6 +78,37 @@ def test_generate_preserves_manual_items(client, mock_gemini):
     names = [i["name"] for i in items]
     assert "수동항목" in names
     assert "자동항목" in names
+
+
+def test_generate_shopping_requires_approval(client, mock_gemini):
+    mock_gemini.recommend_meals.return_value = {
+        "days": [{"date": "2026-03-23", "meals": [{"meal_type": "dinner", "menus": ["된장찌개"]}]}]
+    }
+    client.post("/api/meals/recommend", json={
+        "period": "today", "dates": ["2026-03-23"],
+        "meal_types": ["dinner"], "available_ingredients": "", "use_school_meals": False,
+    })
+    res = client.post("/api/shopping/generate", json={"menus": ["된장찌개"]})
+    assert res.status_code == 403
+    assert "승인" in res.json()["detail"]
+
+
+def test_generate_shopping_after_approval(client, mock_gemini):
+    mock_gemini.recommend_meals.return_value = {
+        "days": [{"date": "2026-03-23", "meals": [{"meal_type": "dinner", "menus": ["된장찌개"]}]}]
+    }
+    client.post("/api/meals/recommend", json={
+        "period": "today", "dates": ["2026-03-23"],
+        "meal_types": ["dinner"], "available_ingredients": "", "use_school_meals": False,
+    })
+    client.put("/api/meals/approve")
+
+    mock_gemini.generate_shopping_list.return_value = {
+        "items": [{"name": "두부", "quantity": "1모", "category": "기타"}]
+    }
+    res = client.post("/api/shopping/generate", json={"menus": ["된장찌개"]})
+    assert res.status_code == 200
+    assert len(res.json()["items"]) == 1
 
 
 def test_frequent_items_crud(client):

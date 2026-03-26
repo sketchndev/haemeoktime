@@ -235,3 +235,71 @@ def test_get_today_meals_includes_main_ingredient(client):
     menu = res.json()["days"][0]["meals"][0]["menus"][0]
     assert menu["main_ingredient"] == "두부"
     assert menu["main_ingredient_unit"] == "모"
+
+
+def test_approve_plan(client, mock_gemini):
+    mock_gemini.recommend_meals.return_value = {
+        "days": [{
+            "date": "2026-03-23",
+            "meals": [{"meal_type": "dinner", "menus": ["된장찌개"]}],
+        }]
+    }
+    client.post("/api/meals/recommend", json={
+        "period": "today", "dates": ["2026-03-23"],
+        "meal_types": ["dinner"], "available_ingredients": "", "use_school_meals": False,
+    })
+
+    status = client.get("/api/meals/approval-status")
+    assert status.status_code == 200
+    assert status.json()["approved"] is False
+
+    res = client.put("/api/meals/approve")
+    assert res.status_code == 200
+
+    status = client.get("/api/meals/approval-status")
+    assert status.json()["approved"] is True
+
+
+def test_recommend_resets_approval(client, mock_gemini):
+    mock_gemini.recommend_meals.return_value = {
+        "days": [{
+            "date": "2026-03-23",
+            "meals": [{"meal_type": "dinner", "menus": ["된장찌개"]}],
+        }]
+    }
+    client.post("/api/meals/recommend", json={
+        "period": "today", "dates": ["2026-03-23"],
+        "meal_types": ["dinner"], "available_ingredients": "", "use_school_meals": False,
+    })
+    client.put("/api/meals/approve")
+
+    client.post("/api/meals/recommend", json={
+        "period": "today", "dates": ["2026-03-23"],
+        "meal_types": ["dinner"], "available_ingredients": "", "use_school_meals": False,
+    })
+    status = client.get("/api/meals/approval-status")
+    assert status.json()["approved"] is False
+
+
+def test_rerecommend_single_resets_approval(client, mock_gemini):
+    mock_gemini.recommend_meals.return_value = {
+        "days": [{
+            "date": "2026-03-23",
+            "meals": [{"meal_type": "dinner", "menus": ["된장찌개"]}],
+        }]
+    }
+    rec = client.post("/api/meals/recommend", json={
+        "period": "today", "dates": ["2026-03-23"],
+        "meal_types": ["dinner"], "available_ingredients": "", "use_school_meals": False,
+    })
+    hid = rec.json()["days"][0]["meals"][0]["menus"][0]["history_id"]
+    client.put("/api/meals/approve")
+
+    mock_gemini.re_recommend_single.return_value = {"menu_name": "비빔밥"}
+    client.post("/api/meals/recommend/single", json={
+        "date": "2026-03-23", "meal_type": "dinner",
+        "history_id": hid, "menu_name": "된장찌개",
+        "max_minutes_override": None, "existing_menus": [],
+    })
+    status = client.get("/api/meals/approval-status")
+    assert status.json()["approved"] is False

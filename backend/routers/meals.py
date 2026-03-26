@@ -188,6 +188,9 @@ def _process_gemini_result(result: dict, body: RecommendRequest, dates, composit
         "INSERT OR REPLACE INTO meal_plan_settings (key, value) VALUES ('available_ingredients', ?)",
         (body.available_ingredients or "",)
     )
+    db.execute(
+        "INSERT OR REPLACE INTO meal_plan_settings (key, value) VALUES ('plan_approved', 'false')"
+    )
     return {"days": days_out}
 
 
@@ -263,6 +266,9 @@ def rerecommend_single(
         "INSERT INTO meal_history (date, meal_type, menu_name, main_ingredient, main_ingredient_unit) VALUES (?, ?, ?, ?, ?)",
         (body.date, body.meal_type, result["menu_name"], result.get("main_ingredient"), result.get("main_ingredient_unit")),
     )
+    db.execute(
+        "INSERT OR REPLACE INTO meal_plan_settings (key, value) VALUES ('plan_approved', 'false')"
+    )
     return {
         "history_id": cur.lastrowid, "name": result["menu_name"],
         "main_ingredient": result.get("main_ingredient"),
@@ -311,6 +317,9 @@ def rerecommend_meal_type(
             "main_ingredient": main_ing, "main_ingredient_unit": main_ing_unit,
         })
 
+    db.execute(
+        "INSERT OR REPLACE INTO meal_plan_settings (key, value) VALUES ('plan_approved', 'false')"
+    )
     return {"menus": menus_out}
 
 
@@ -347,3 +356,20 @@ def get_week_meals(db=Depends(get_db)):
 def delete_history(history_id: int, db=Depends(get_db)):
     db.execute("DELETE FROM meal_history WHERE id = ?", (history_id,))
     return {"ok": True}
+
+
+@router.put("/meals/approve")
+def approve_plan(db=Depends(get_db)):
+    db.execute(
+        "INSERT OR REPLACE INTO meal_plan_settings (key, value) VALUES ('plan_approved', 'true')"
+    )
+    return {"ok": True}
+
+
+@router.get("/meals/approval-status")
+def get_approval_status(db=Depends(get_db)):
+    row = db.execute(
+        "SELECT value FROM meal_plan_settings WHERE key = 'plan_approved'"
+    ).fetchone()
+    approved = row["value"] == "true" if row else False
+    return {"approved": approved}
