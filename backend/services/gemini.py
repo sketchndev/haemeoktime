@@ -228,6 +228,7 @@ class GeminiService:
 
 # 응답 (JSON만)
 {{"menu_name": "string", "servings": 숫자, "calories": 숫자,
+  "cooking_time": 총 조리 시간(분 단위 정수),
   "main_ingredient": "주재료명 (예: 소고기, 두부, 시금치 등 이 요리의 핵심 재료 1가지)",
   "main_ingredient_unit": "해당 주재료의 자연스러운 계량 단위 (예: g, 개, 모 등)",
   "ingredients": [{{"name": "재료명", "amount": "계량"}}],

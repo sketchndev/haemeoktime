@@ -229,10 +229,20 @@ export default function RecipeDetail() {
             </div>
           )}
 
-          {recipe.calories && (
-            <div className="bg-amber-50 rounded-xl p-3 mb-4 text-sm">
-              <span className="text-gray-500">칼로리</span>
-              <span className="font-bold text-amber-600 ml-2">약 {recipe.calories} kcal</span>
+          {(recipe.calories || recipe.cooking_time || recipe.cookingTime) && (
+            <div className="bg-amber-50 rounded-xl p-3 mb-4 text-sm flex items-center gap-4">
+              {recipe.calories && (
+                <div>
+                  <span className="text-gray-500">칼로리</span>
+                  <span className="font-bold text-amber-600 ml-2">약 {recipe.calories} kcal</span>
+                </div>
+              )}
+              {(recipe.cooking_time || recipe.cookingTime) && (
+                <div>
+                  <span className="text-gray-500">조리 시간</span>
+                  <span className="font-bold text-amber-600 ml-2">약 {recipe.cooking_time || recipe.cookingTime}분</span>
+                </div>
+              )}
             </div>
           )}
 

@@ -106,6 +106,7 @@ class RecipeResponse(BaseModel):
     menu_name: str
     servings: int
     calories: int
+    cooking_time: Optional[int] = None
     main_ingredient: Optional[str] = None
     main_ingredient_unit: Optional[str] = None
     ingredients: list[Ingredient]
