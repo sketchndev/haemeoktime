@@ -5,8 +5,10 @@ const MealPlanContext = createContext(null)
 export function MealPlanProvider({ children }) {
   const [plan, setPlan] = useState(null)
   const [ingredients, setIngredients] = useState('')
+  const [approved, setApproved] = useState(false)
 
   const updateMenu = (date, mealType, historyId, newMenu) => {
+    setApproved(false)
     setPlan((prev) => {
       if (!prev) return prev
       return {
@@ -29,6 +31,7 @@ export function MealPlanProvider({ children }) {
   }
 
   const replaceMeal = (date, mealType, newMenus) => {
+    setApproved(false)
     setPlan((prev) => {
       if (!prev) return prev
       return {
@@ -46,6 +49,7 @@ export function MealPlanProvider({ children }) {
   }
 
   const removeMenu = (date, mealType, historyId) => {
+    setApproved(false)
     setPlan((prev) => {
       if (!prev) return prev
       return {
@@ -66,7 +70,7 @@ export function MealPlanProvider({ children }) {
   }
 
   return (
-    <MealPlanContext.Provider value={{ plan, setPlan, ingredients, setIngredients, updateMenu, replaceMeal, removeMenu }}>
+    <MealPlanContext.Provider value={{ plan, setPlan, ingredients, setIngredients, approved, setApproved, updateMenu, replaceMeal, removeMenu }}>
       {children}
     </MealPlanContext.Provider>
   )

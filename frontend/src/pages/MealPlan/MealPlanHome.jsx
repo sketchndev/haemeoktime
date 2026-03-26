@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { recommendMealsStream, getTodayMeals, getWeekMeals } from '../../api/meals'
+import { recommendMealsStream, getTodayMeals, getWeekMeals, getApprovalStatus } from '../../api/meals'
 import { getSchoolMeals } from '../../api/schoolMeals'
 import { useMealPlan } from '../../contexts/MealPlanContext'
 import LoadingSpinner from '../../components/LoadingSpinner'
@@ -46,7 +46,7 @@ function saveSettings({ period, mealTypes, useSchoolMeals }) {
 
 export default function MealPlanHome() {
   const navigate = useNavigate()
-  const { setPlan, ingredients, setIngredients } = useMealPlan()
+  const { setPlan, ingredients, setIngredients, setApproved } = useMealPlan()
   const saved = loadSavedSettings()
   const [period, setPeriod] = useState(saved?.period ?? 'today')
   const [mealTypes, setMealTypes] = useState(saved?.mealTypes ?? ['breakfast', 'lunch', 'dinner'])
@@ -118,6 +118,7 @@ export default function MealPlanHome() {
         },
       )
       setPlan(result)
+      setApproved(false)
       navigate('/meals/result')
     } catch (e) {
       toast.error(e.message)
@@ -129,8 +130,9 @@ export default function MealPlanHome() {
   const handleViewWeek = async () => {
     setWeekLoading(true)
     try {
-      const result = await getWeekMeals()
+      const [result, statusData] = await Promise.all([getWeekMeals(), getApprovalStatus()])
       setPlan(result)
+      setApproved(statusData?.approved ?? false)
       navigate('/meals/result', { state: { fromWeekView: true } })
     } catch (e) {
       toast.error(e.message)

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useMealPlan } from '../../contexts/MealPlanContext'
-import { reRecommendSingle, reRecommendMealType, deleteHistoryItem, getWeekMeals } from '../../api/meals'
+import { reRecommendSingle, reRecommendMealType, deleteHistoryItem, getWeekMeals, approvePlan, getApprovalStatus } from '../../api/meals'
 import { generateShopping } from '../../api/shopping'
 
 const MEAL_LABELS = { breakfast: '🌅 아침', lunch: '☀️ 점심', dinner: '🌙 저녁' }
@@ -12,7 +12,7 @@ export default function MealPlanResult() {
   const navigate = useNavigate()
   const location = useLocation()
   const fromWeekView = location.state?.fromWeekView === true
-  const { plan, setPlan, ingredients, updateMenu, replaceMeal, removeMenu } = useMealPlan()
+  const { plan, setPlan, ingredients, approved, setApproved, updateMenu, replaceMeal, removeMenu } = useMealPlan()
   const todayStr = new Date().toLocaleDateString('en-CA')
   const [selectedDate, setSelectedDate] = useState('')
   const [fetchLoading, setFetchLoading] = useState(false)
@@ -20,9 +20,10 @@ export default function MealPlanResult() {
   useEffect(() => {
     if (!plan) {
       setFetchLoading(true)
-      getWeekMeals()
-        .then((data) => {
+      Promise.all([getWeekMeals(), getApprovalStatus()])
+        .then(([data, statusData]) => {
           if (data?.days?.length > 0) setPlan(data)
+          if (statusData?.approved) setApproved(true)
         })
         .catch(() => {})
         .finally(() => setFetchLoading(false))
@@ -38,6 +39,20 @@ export default function MealPlanResult() {
   }, [plan])
   const [loading, setLoading] = useState({})
   const [shoppingLoading, setShoppingLoading] = useState(false)
+  const [approveLoading, setApproveLoading] = useState(false)
+
+  const handleApprove = async () => {
+    setApproveLoading(true)
+    try {
+      await approvePlan()
+      setApproved(true)
+      toast.success('식단을 확정했어요!')
+    } catch (e) {
+      toast.error(e.message)
+    } finally {
+      setApproveLoading(false)
+    }
+  }
 
   if (fetchLoading) {
     return (
@@ -234,17 +249,31 @@ export default function MealPlanResult() {
         })}
       </div>
 
-      <button
-        onClick={handleGenerateShopping}
-        disabled={shoppingLoading || Object.values(loading).some(Boolean)}
-        className="mt-4 w-full bg-green-500 text-white py-3 rounded-xl font-semibold disabled:opacity-60 flex items-center justify-center gap-2"
-      >
-        {shoppingLoading ? (
-          <><Spinner /> 장보기 리스트 만드는 중...</>
-        ) : (
-          '🛒 장보기 리스트 만들기'
-        )}
-      </button>
+      {!approved ? (
+        <button
+          onClick={handleApprove}
+          disabled={approveLoading || Object.values(loading).some(Boolean)}
+          className="mt-4 w-full bg-blue-500 text-white py-3 rounded-xl font-semibold disabled:opacity-60 flex items-center justify-center gap-2"
+        >
+          {approveLoading ? (
+            <><Spinner /> 확정하는 중...</>
+          ) : (
+            '✅ 이 식단으로 확정'
+          )}
+        </button>
+      ) : (
+        <button
+          onClick={handleGenerateShopping}
+          disabled={shoppingLoading || Object.values(loading).some(Boolean)}
+          className="mt-4 w-full bg-green-500 text-white py-3 rounded-xl font-semibold disabled:opacity-60 flex items-center justify-center gap-2"
+        >
+          {shoppingLoading ? (
+            <><Spinner /> 장보기 리스트 만드는 중...</>
+          ) : (
+            '🛒 장보기 리스트 만들기'
+          )}
+        </button>
+      )}
     </div>
   )
 }

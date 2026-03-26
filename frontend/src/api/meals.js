@@ -35,3 +35,5 @@ export const reRecommendMealType = (body) => client.post('/meals/recommend/meal-
 export const deleteHistoryItem = (id) => client.delete(`/meals/history/${id}`)
 export const getTodayMeals = () => client.get('/meals/today')
 export const getWeekMeals = () => client.get('/meals/week')
+export const approvePlan = () => client.put('/meals/approve')
+export const getApprovalStatus = () => client.get('/meals/approval-status')
