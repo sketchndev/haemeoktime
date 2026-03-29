@@ -83,8 +83,8 @@ def _resolve_dates(req: RecommendRequest) -> list[str]:
         return [date.today().isoformat()]
     if req.period == "week":
         today = date.today()
-        monday = today - timedelta(days=today.weekday())
-        return [(monday + timedelta(days=i)).isoformat() for i in range(7)]
+        sun = today - timedelta(days=(today.weekday() + 1) % 7)
+        return [(sun + timedelta(days=i)).isoformat() for i in range(7)]
     if req.period == "weekdays":
         today = date.today()
         weekday = today.weekday()  # 0=Mon ... 6=Sun
@@ -136,7 +136,7 @@ def _process_gemini_result(result: dict, body: RecommendRequest, dates, composit
 
     # 새 식단 추천 시 장보기 리스트 초기화
     today = date.today()
-    week_start = (today - timedelta(days=today.weekday())).isoformat()
+    week_start = (today - timedelta(days=(today.weekday() + 1) % 7)).isoformat()
     db.execute("DELETE FROM shopping_items WHERE week_start = ?", (week_start,))
 
     days_out = []
@@ -338,12 +338,12 @@ def get_today_meals(db=Depends(get_db)):
 @router.get("/meals/week")
 def get_week_meals(db=Depends(get_db)):
     today = date.today()
-    monday = today - timedelta(days=today.weekday())
-    sunday = monday + timedelta(days=6)
+    sun = today - timedelta(days=(today.weekday() + 1) % 7)
+    next_sat = sun + timedelta(days=13)
     rows = db.execute(
         "SELECT id, date, meal_type, menu_name, main_ingredient, main_ingredient_unit FROM meal_history "
         "WHERE date >= ? AND date <= ? ORDER BY date, id",
-        (monday.isoformat(), sunday.isoformat())
+        (sun.isoformat(), next_sat.isoformat())
     ).fetchall()
     plan = _build_plan_from_rows(rows)
     ai_row = db.execute(

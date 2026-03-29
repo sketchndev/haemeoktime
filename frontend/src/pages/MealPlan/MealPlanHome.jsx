@@ -228,7 +228,7 @@ export default function MealPlanHome() {
               disabled={weekLoading}
               className="mt-2 w-full text-sm text-green-700 border border-green-300 py-2 rounded-xl"
             >
-              {weekLoading ? '...' : '📅 이번 주 식단 보기'}
+              {weekLoading ? '...' : '📅 식단 전체 보기'}
             </button>
             <button
               onClick={() => setShowForm(true)}

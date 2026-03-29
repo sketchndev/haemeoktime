@@ -14,7 +14,7 @@ router = APIRouter()
 
 def _current_week_start() -> str:
     today = date.today()
-    return (today - timedelta(days=today.weekday())).isoformat()
+    return (today - timedelta(days=(today.weekday() + 1) % 7)).isoformat()
 
 
 @router.get("/shopping", response_model=ShoppingResponse)
