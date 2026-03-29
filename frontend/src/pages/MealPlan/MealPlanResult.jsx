@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useMealPlan } from '../../contexts/MealPlanContext'
@@ -91,12 +91,16 @@ export default function MealPlanResult() {
     }
   }
 
+  const editSubmittedRef = useRef(false)
+
   const handleEditMenu = async (date, mealType, historyId) => {
+    if (editSubmittedRef.current) return
     const newName = editingMenu?.value?.trim()
     if (!newName) {
       setEditingMenu(null)
       return
     }
+    editSubmittedRef.current = true
     try {
       const result = await updateHistoryItem(historyId, newName)
       updateMenu(date, mealType, historyId, result)
@@ -105,6 +109,7 @@ export default function MealPlanResult() {
       toast.error(e.message)
     }
     setEditingMenu(null)
+    editSubmittedRef.current = false
   }
 
   if (fetchLoading) {

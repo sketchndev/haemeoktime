@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 from datetime import date, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -240,6 +241,7 @@ def recommend_stream(body: RecommendRequest, db=Depends(get_db), gemini: GeminiS
 
             yield _sse({"progress": 100, "stage": "완료!", "result": plan})
         except Exception as e:
+            logging.error("recommend_stream error: %s", e, exc_info=True)
             yield _sse({"error": str(e)})
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
