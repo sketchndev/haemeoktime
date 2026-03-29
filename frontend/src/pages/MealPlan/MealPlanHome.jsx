@@ -171,8 +171,8 @@ export default function MealPlanHome() {
             displayDate = todayEntry.date
           } else {
             const upcoming = weekPlan.days.filter((d) => d.date > todayStr)
-            const nextDay = upcoming.length > 0 ? upcoming[0] : weekPlan.days[weekPlan.days.length - 1]
-            if (nextDay) {
+            if (upcoming.length > 0) {
+              const nextDay = upcoming[0]
               displayDay = nextDay
               displayDate = nextDay.date
               const d = new Date(nextDay.date + 'T00:00:00')

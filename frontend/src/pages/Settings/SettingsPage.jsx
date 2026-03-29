@@ -86,6 +86,7 @@ export default function SettingsPage() {
     } catch (e) {
       toast.error(e.message)
     } finally {
+      e.target.value = ''
       setPhotoLoading(false)
     }
   }
