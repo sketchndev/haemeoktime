@@ -40,9 +40,16 @@ def generate_shopping(
     if not row or row["value"] != "true":
         raise HTTPException(status_code=403, detail="식단을 먼저 승인해주세요")
     condiments = [r["name"] for r in db.execute("SELECT name FROM condiments").fetchall()]
+    ai_row = db.execute(
+        "SELECT value FROM meal_plan_settings WHERE key = 'available_ingredients'"
+    ).fetchone()
+    available_ingredients = ai_row["value"] if ai_row else ""
 
     try:
-        result = gemini.generate_shopping_list(menus=body.menus, condiments=condiments)
+        result = gemini.generate_shopping_list(
+            menus=body.menus, condiments=condiments,
+            available_ingredients=available_ingredients,
+        )
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
 

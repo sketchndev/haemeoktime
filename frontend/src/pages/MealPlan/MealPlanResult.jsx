@@ -31,11 +31,13 @@ export default function MealPlanResult() {
   }, [])
 
   useEffect(() => {
-    const target =
-      plan?.days?.find((d) => d.date === todayStr)?.date ||
-      plan?.days?.[0]?.date ||
-      ''
-    setSelectedDate(target)
+    if (!selectedDate) {
+      const target =
+        plan?.days?.find((d) => d.date === todayStr)?.date ||
+        plan?.days?.[0]?.date ||
+        ''
+      setSelectedDate(target)
+    }
   }, [plan])
   const [loading, setLoading] = useState({})
   const [shoppingLoading, setShoppingLoading] = useState(false)

@@ -57,6 +57,7 @@ export default function MealPlanHome() {
   const [todayPlan, setTodayPlan] = useState(null)
   const [todayLoading, setTodayLoading] = useState(true)
   const [weekLoading, setWeekLoading] = useState(false)
+  const [weekPlan, setWeekPlan] = useState(null)
   const [showForm, setShowForm] = useState(false)
 
   useEffect(() => {
@@ -64,8 +65,11 @@ export default function MealPlanHome() {
   }, [period, mealTypes, useSchoolMeals])
 
   useEffect(() => {
-    getTodayMeals()
-      .then((data) => setTodayPlan(data))
+    Promise.all([getTodayMeals(), getWeekMeals()])
+      .then(([todayData, weekData]) => {
+        setTodayPlan(todayData)
+        if (weekData?.days?.length > 0) setWeekPlan(weekData)
+      })
       .catch(() => {})
       .finally(() => setTodayLoading(false))
     getSchoolMeals()
@@ -149,47 +153,76 @@ export default function MealPlanHome() {
         <h1 className="text-2xl font-bold">해먹타임 🍽</h1>
       </div>
 
-      {!todayLoading && todayPlan?.days?.length > 0 && !showForm && (() => {
-        const todayDate = todayPlan.days[0].date
-        const visibleMeals = todayPlan.days[0].meals.filter(
-          (m) => m.menus.length > 0 && !isPastMeal(m.meal_type)
-        )
-        if (visibleMeals.length === 0) return null
+      {!todayLoading && (todayPlan?.days?.length > 0 || weekPlan) && !showForm && (() => {
+        const todayStr = new Date().toLocaleDateString('en-CA')
+        const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토']
+
+        let displayDay = null
+        let displayDate = null
+        let headerLabel = '오늘 식단'
+
+        if (todayPlan?.days?.length > 0) {
+          displayDay = todayPlan.days[0]
+          displayDate = displayDay.date
+        } else if (weekPlan) {
+          const todayEntry = weekPlan.days.find((d) => d.date === todayStr)
+          if (todayEntry) {
+            displayDay = todayEntry
+            displayDate = todayEntry.date
+          } else {
+            const upcoming = weekPlan.days.filter((d) => d.date > todayStr)
+            const nextDay = upcoming.length > 0 ? upcoming[0] : weekPlan.days[weekPlan.days.length - 1]
+            if (nextDay) {
+              displayDay = nextDay
+              displayDate = nextDay.date
+              const d = new Date(nextDay.date + 'T00:00:00')
+              headerLabel = `${d.getMonth() + 1}/${d.getDate()}(${DAY_NAMES[d.getDay()]}) 식단`
+            }
+          }
+        }
+
+        const visibleMeals = displayDay?.meals.filter((m) => m.menus.length > 0) || []
+
         return (
           <section>
-            <h2 className="text-sm font-semibold text-gray-500 mb-2">오늘 식단</h2>
-            <div className="space-y-2">
-              {visibleMeals.map((meal) => {
-                const menuNames = meal.menus.map((m) => m.name)
-                return (
-                  <div key={meal.meal_type} className="bg-white rounded-xl shadow-sm p-3">
-                    <p className="font-semibold text-sm mb-1">{MEAL_LABELS[meal.meal_type]}</p>
-                    <div className="flex flex-wrap gap-1.5 mb-2">
-                      {menuNames.map((name) => (
-                        <button
-                          key={name}
-                          onClick={() => navigate(`/recipes/${encodeURIComponent(name)}`)}
-                          className="inline-block bg-gray-100 text-gray-700 text-xs px-2.5 py-1 rounded-full hover:bg-amber-50 hover:text-amber-700 transition-colors"
-                        >
-                          {name}
-                        </button>
-                      ))}
-                    </div>
-                    {menuNames.length >= 2 && (
-                      <button
-                        onClick={() => navigate(
-                          `/meals/result/${todayDate}/${meal.meal_type}/cooking`,
-                          { state: { menus: menuNames } }
+            {visibleMeals.length > 0 && (
+              <>
+                <h2 className="text-sm font-semibold text-gray-500 mb-2">{headerLabel}</h2>
+                <div className="space-y-2">
+                  {visibleMeals.map((meal) => {
+                    const past = isPastMeal(meal.meal_type) && displayDate === todayStr
+                    const menuNames = meal.menus.map((m) => m.name)
+                    return (
+                      <div key={meal.meal_type} className={`bg-white rounded-xl shadow-sm p-3 ${past ? 'opacity-50' : ''}`}>
+                        <p className="font-semibold text-sm mb-1">{MEAL_LABELS[meal.meal_type]}</p>
+                        <div className="flex flex-wrap gap-1.5 mb-2">
+                          {menuNames.map((name) => (
+                            <button
+                              key={name}
+                              onClick={() => navigate(`/recipes/${encodeURIComponent(name)}`)}
+                              className="inline-block bg-gray-100 text-gray-700 text-xs px-2.5 py-1 rounded-full hover:bg-amber-50 hover:text-amber-700 transition-colors"
+                            >
+                              {name}
+                            </button>
+                          ))}
+                        </div>
+                        {menuNames.length >= 2 && (
+                          <button
+                            onClick={() => navigate(
+                              `/meals/result/${displayDate}/${meal.meal_type}/cooking`,
+                              { state: { menus: menuNames } }
+                            )}
+                            className="text-xs text-amber-600 border border-amber-300 px-3 py-1 rounded-full"
+                          >
+                            🍳 한꺼번에 요리하기
+                          </button>
                         )}
-                        className="text-xs text-amber-600 border border-amber-300 px-3 py-1 rounded-full"
-                      >
-                        🍳 한꺼번에 요리하기
-                      </button>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </>
+            )}
             <button
               onClick={handleViewWeek}
               disabled={weekLoading}
@@ -207,7 +240,7 @@ export default function MealPlanHome() {
         )
       })()}
 
-      {(!todayLoading && (!todayPlan?.days?.length || showForm)) && <>
+      {(!todayLoading && !weekPlan && !todayPlan?.days?.length || showForm) && <>
         <section>
           <h2 className="text-sm font-semibold text-gray-500 mb-2">기간</h2>
           <div className="flex gap-2 flex-wrap">

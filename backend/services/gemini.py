@@ -365,7 +365,7 @@ class GeminiService:
 
     # ── 장보기 목록 ───────────────────────────────────────
 
-    def generate_shopping_list(self, menus: list, condiments: list) -> dict:
+    def generate_shopping_list(self, menus: list, condiments: list, available_ingredients: str = "") -> dict:
         prompt = f"""# 역할
 가정 식단 전문가.
 
@@ -374,6 +374,7 @@ class GeminiService:
 
 # 조건
 - 이미 보유한 조미료(제외): {condiments}
+- 집에 이미 있는 재료(제외): {available_ingredients or '없음'}
 - items: 여러 메뉴에 공통으로 필요한 재료는 합산하여 1개 항목으로
 - items 카테고리: 채소/과일, 육류/해산물, 유제품/계란, 가공식품, 기타
 - 계량은 큰술/작은술로 표기 (T/t/tsp/tbsp 등 영문 기호 사용 금지)
