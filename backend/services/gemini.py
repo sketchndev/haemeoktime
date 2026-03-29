@@ -111,14 +111,14 @@ class GeminiService:
 - 최근 2주 이력(겹침 방지): {meal_history or '없음'}
 - 급식(해당 날짜 점심 제외): {school_meals or '없음'}
 - 끼니별 최대 총 조리 시간: {cooking_times} (한 끼의 모든 메뉴 조리 시간 합계가 이 시간 이내여야 함)
-- 집에 있는 재료(우선 활용): {available_ingredients or '없음'}
+- 집에 있는 재료(참고용): {available_ingredients or '없음'}
 {composition_block}
 
 # 규칙 (모두 준수)
 1. 흰쌀밥·김치·깍두기 등 상비 반찬은 menus에 포함하지 않기
 2. 한 끼니의 모든 메뉴 조리 시간 합계가 해당 끼니 최대 시간 이내여야 함 (예: 최대 30분이면 메뉴 3개의 조리 시간 합이 30분 이내)
 3. 최근 2주 이력과 중복 금지
-4. 집에 있는 재료를 우선 활용
+4. 집에 있는 재료가 있으면 일부 메뉴에 활용하되, 반드시 그 재료만 사용할 필요는 없음. 다양한 메뉴를 자유롭게 추천
 5. 급식 있는 날 점심은 급식 메뉴와 겹치지 않게{optional_rules}
 6. 각 메뉴에 main_ingredient(핵심 재료 1가지)와 main_ingredient_unit(계량 단위) 포함
    - main_ingredient: 해당 요리의 핵심 재료 (예: 쭈꾸미볶음→쭈꾸미, 소불고기→소고기, 시금치나물→시금치)
