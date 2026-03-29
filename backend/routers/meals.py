@@ -7,6 +7,7 @@ from database import get_db, open_db
 from models import (
     RecommendRequest, RecommendResponse,
     SingleReRecommendRequest, MealTypeReRecommendRequest,
+    SwapDatesRequest, UpdateHistoryRequest,
 )
 from services.gemini import GeminiService, get_gemini
 
@@ -352,9 +353,33 @@ def get_week_meals(db=Depends(get_db)):
     return plan
 
 
+@router.patch("/meals/history/{history_id}")
+def update_history(history_id: int, body: UpdateHistoryRequest, db=Depends(get_db)):
+    row = db.execute("SELECT id FROM meal_history WHERE id = ?", (history_id,)).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="해당 메뉴를 찾을 수 없습니다")
+    db.execute(
+        "UPDATE meal_history SET menu_name = ?, main_ingredient = NULL, main_ingredient_unit = NULL WHERE id = ?",
+        (body.menu_name, history_id),
+    )
+    return {"history_id": history_id, "name": body.menu_name, "main_ingredient": None, "main_ingredient_unit": None}
+
+
 @router.delete("/meals/history/{history_id}")
 def delete_history(history_id: int, db=Depends(get_db)):
     db.execute("DELETE FROM meal_history WHERE id = ?", (history_id,))
+    return {"ok": True}
+
+
+@router.put("/meals/swap-dates")
+def swap_dates(body: SwapDatesRequest, db=Depends(get_db)):
+    if body.date1 == body.date2:
+        raise HTTPException(status_code=400, detail="같은 날짜끼리는 교환할 수 없습니다")
+    # 임시 날짜로 우회하여 unique 충돌 방지
+    temp_date = "__swap_temp__"
+    db.execute("UPDATE meal_history SET date = ? WHERE date = ?", (temp_date, body.date1))
+    db.execute("UPDATE meal_history SET date = ? WHERE date = ?", (body.date1, body.date2))
+    db.execute("UPDATE meal_history SET date = ? WHERE date = ?", (body.date2, temp_date))
     return {"ok": True}
 
 

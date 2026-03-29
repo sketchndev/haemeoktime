@@ -185,7 +185,7 @@ def test_get_week_meals_empty(client):
     """이번 주 meal_history가 없으면 days 빈 배열을 반환한다."""
     res = client.get("/api/meals/week")
     assert res.status_code == 200
-    assert res.json() == {"days": []}
+    assert res.json() == {"days": [], "available_ingredients": ""}
 
 
 def test_recommend_saves_main_ingredient(client, mock_gemini):

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useMealPlan } from '../../contexts/MealPlanContext'
-import { reRecommendSingle, reRecommendMealType, deleteHistoryItem, getWeekMeals, approvePlan, getApprovalStatus } from '../../api/meals'
+import { reRecommendSingle, reRecommendMealType, updateHistoryItem, deleteHistoryItem, getWeekMeals, approvePlan, getApprovalStatus, swapDates } from '../../api/meals'
 import { generateShopping } from '../../api/shopping'
 
 const MEAL_LABELS = { breakfast: '🌅 아침', lunch: '☀️ 점심', dinner: '🌙 저녁' }
@@ -12,10 +12,12 @@ export default function MealPlanResult() {
   const navigate = useNavigate()
   const location = useLocation()
   const fromWeekView = location.state?.fromWeekView === true
-  const { plan, setPlan, ingredients, approved, setApproved, updateMenu, replaceMeal, removeMenu } = useMealPlan()
+  const { plan, setPlan, ingredients, approved, setApproved, updateMenu, replaceMeal, removeMenu, swapDays } = useMealPlan()
   const todayStr = new Date().toLocaleDateString('en-CA')
   const [selectedDate, setSelectedDate] = useState('')
   const [fetchLoading, setFetchLoading] = useState(false)
+  const [swapSource, setSwapSource] = useState(null)
+  const longPressTimer = { current: null }
 
   useEffect(() => {
     if (!plan) {
@@ -42,6 +44,8 @@ export default function MealPlanResult() {
   const [loading, setLoading] = useState({})
   const [shoppingLoading, setShoppingLoading] = useState(false)
   const [approveLoading, setApproveLoading] = useState(false)
+  const [editingMenu, setEditingMenu] = useState(null)  // { historyId, value }
+
 
   const handleApprove = async () => {
     setApproveLoading(true)
@@ -54,6 +58,53 @@ export default function MealPlanResult() {
     } finally {
       setApproveLoading(false)
     }
+  }
+
+  const handleSwap = async (targetDate) => {
+    if (!swapSource || swapSource === targetDate) {
+      setSwapSource(null)
+      return
+    }
+    try {
+      await swapDates(swapSource, targetDate)
+      swapDays(swapSource, targetDate)
+      const d1 = new Date(swapSource + 'T00:00:00')
+      const d2 = new Date(targetDate + 'T00:00:00')
+      toast.success(`${d1.getMonth()+1}/${d1.getDate()} ↔ ${d2.getMonth()+1}/${d2.getDate()} 식단을 교환했어요`)
+    } catch (e) {
+      toast.error(e.message)
+    }
+    setSwapSource(null)
+  }
+
+  const startLongPress = (date) => {
+    longPressTimer.current = setTimeout(() => {
+      setSwapSource(date)
+      setSelectedDate(date)
+    }, 700)
+  }
+
+  const cancelLongPress = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
+  }
+
+  const handleEditMenu = async (date, mealType, historyId) => {
+    const newName = editingMenu?.value?.trim()
+    if (!newName) {
+      setEditingMenu(null)
+      return
+    }
+    try {
+      const result = await updateHistoryItem(historyId, newName)
+      updateMenu(date, mealType, historyId, result)
+      toast.success(`메뉴를 "${newName}"(으)로 변경했어요`)
+    } catch (e) {
+      toast.error(e.message)
+    }
+    setEditingMenu(null)
   }
 
   if (fetchLoading) {
@@ -152,16 +203,37 @@ export default function MealPlanResult() {
         ) : null
       })()}
 
+      {swapSource && (
+        <div className="bg-blue-50 rounded-xl px-3 py-2 mb-2 text-sm text-blue-700 flex items-center justify-between">
+          <span>교환할 날짜를 선택하세요</span>
+          <button onClick={() => setSwapSource(null)} className="text-blue-400 text-xs">취소</button>
+        </div>
+      )}
+
       <div className="flex gap-1 overflow-x-auto pb-2 mb-4">
         {plan.days.map((day) => {
           const d = new Date(day.date + 'T00:00:00')
+          const isSwapSource = swapSource === day.date
+          const isSwapTarget = swapSource && swapSource !== day.date
+          let tabClass = 'flex-shrink-0 px-3 py-2 rounded-lg text-sm font-medium '
+          if (isSwapSource) {
+            tabClass += 'bg-blue-500 text-white ring-2 ring-blue-300'
+          } else if (isSwapTarget) {
+            tabClass += 'bg-white border-2 border-dashed border-blue-400 text-blue-600'
+          } else if (day.date === selectedDate) {
+            tabClass += 'bg-green-500 text-white'
+          } else {
+            tabClass += 'bg-white border'
+          }
           return (
             <button
               key={day.date}
-              onClick={() => setSelectedDate(day.date)}
-              className={`flex-shrink-0 px-3 py-2 rounded-lg text-sm font-medium ${
-                day.date === selectedDate ? 'bg-green-500 text-white' : 'bg-white border'
-              }`}
+              onClick={() => swapSource ? handleSwap(day.date) : setSelectedDate(day.date)}
+              onPointerDown={() => !swapSource && startLongPress(day.date)}
+              onPointerUp={cancelLongPress}
+              onPointerLeave={cancelLongPress}
+              onContextMenu={(e) => e.preventDefault()}
+              className={tabClass}
             >
               {DAY_NAMES[d.getDay()]}
               <div className="text-xs">{d.getMonth() + 1}/{d.getDate()}</div>
@@ -197,42 +269,71 @@ export default function MealPlanResult() {
               )}
 
               <div className="space-y-2">
-                {meal.menus.map((menu) => (
-                  <div key={menu.history_id} className="flex items-center justify-between">
-                    <button
-                      onClick={() => navigate(`/recipes/${encodeURIComponent(menu.name)}`)}
-                      className="text-sm text-left flex-1"
-                    >
-                      • {menu.name}
-                    </button>
-                    {!meal.is_school_meal && menu.history_id > 0 && (
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => handleReRecommendSingle(
-                            currentDay.date, meal.meal_type, menu.history_id, menu.name,
-                            meal.menus.filter(m => m.history_id !== menu.history_id).map(m => m.name)
+                {meal.menus.map((menu) => {
+                  const isEditing = editingMenu?.historyId === menu.history_id
+                  return (
+                    <div key={menu.history_id}>
+                      {isEditing ? (
+                        <form
+                          onSubmit={(e) => { e.preventDefault(); handleEditMenu(currentDay.date, meal.meal_type, menu.history_id) }}
+                          className="flex gap-1.5 items-center"
+                        >
+                          <input
+                            autoFocus
+                            value={editingMenu.value}
+                            onChange={(e) => setEditingMenu((prev) => ({ ...prev, value: e.target.value }))}
+                            onBlur={() => handleEditMenu(currentDay.date, meal.meal_type, menu.history_id)}
+                            className="flex-1 border rounded-lg px-2 py-1 text-sm"
+                            placeholder="메뉴명 입력"
+                          />
+                          <button type="submit" className="text-xs text-green-600 border border-green-300 px-2 py-1 rounded-full">확인</button>
+                          <button type="button" onClick={() => setEditingMenu(null)} className="text-xs text-gray-400 px-1">취소</button>
+                        </form>
+                      ) : (
+                        <div className="flex items-center justify-between">
+                          <button
+                            onClick={() => navigate(`/recipes/${encodeURIComponent(menu.name)}`)}
+                            className="text-sm text-left flex-1"
+                          >
+                            • {menu.name}
+                          </button>
+                          {!meal.is_school_meal && menu.history_id > 0 && (
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => setEditingMenu({ historyId: menu.history_id, value: menu.name })}
+                                className="text-xs text-gray-500 px-1"
+                              >
+                                ✏️
+                              </button>
+                              <button
+                                onClick={() => handleReRecommendSingle(
+                                  currentDay.date, meal.meal_type, menu.history_id, menu.name,
+                                  meal.menus.filter(m => m.history_id !== menu.history_id).map(m => m.name)
+                                )}
+                                disabled={loading[`single-${menu.history_id}`]}
+                                className="text-xs text-blue-500 border border-blue-200 px-2 py-0.5 rounded-full disabled:opacity-50 flex items-center gap-1"
+                              >
+                                {loading[`single-${menu.history_id}`] ? <><Spinner /> 바꾸는 중</> : '🔀 바꾸기'}
+                              </button>
+                              <button
+                                onClick={() => navigate(`/recipes/${encodeURIComponent(menu.name)}`)}
+                                className="text-xs text-gray-500 px-1"
+                              >
+                                레시피
+                              </button>
+                              <button
+                                onClick={() => handleDeleteMenu(currentDay.date, meal.meal_type, menu.history_id)}
+                                className="text-xs text-red-400 px-1"
+                              >
+                                🗑
+                              </button>
+                            </div>
                           )}
-                          disabled={loading[`single-${menu.history_id}`]}
-                          className="text-xs text-blue-500 border border-blue-200 px-2 py-0.5 rounded-full disabled:opacity-50 flex items-center gap-1"
-                        >
-                          {loading[`single-${menu.history_id}`] ? <><Spinner /> 바꾸는 중</> : '🔀 바꾸기'}
-                        </button>
-                        <button
-                          onClick={() => navigate(`/recipes/${encodeURIComponent(menu.name)}`)}
-                          className="text-xs text-gray-500 px-1"
-                        >
-                          레시피
-                        </button>
-                        <button
-                          onClick={() => handleDeleteMenu(currentDay.date, meal.meal_type, menu.history_id)}
-                          className="text-xs text-red-400 px-1"
-                        >
-                          🗑
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
 
               {!meal.is_school_meal && menuNames.length >= 2 && (

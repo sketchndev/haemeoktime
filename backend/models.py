@@ -88,6 +88,15 @@ class MealTypeReRecommendRequest(BaseModel):
     existing_history_ids: list[int] = []
 
 
+class SwapDatesRequest(BaseModel):
+    date1: str
+    date2: str
+
+
+class UpdateHistoryRequest(BaseModel):
+    menu_name: str
+
+
 # ── Recipes ──────────────────────────────────────────────
 
 class RecipeRequest(BaseModel):
