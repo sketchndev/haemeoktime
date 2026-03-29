@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { recommendMealsStream, getTodayMeals, getWeekMeals, getApprovalStatus } from '../../api/meals'
+import { recommendMealsStream, getTodayMeals, getWeekMeals, getApprovalStatus, getFrequentIngredients, addFrequentIngredient, deleteFrequentIngredient } from '../../api/meals'
 import { getSchoolMeals } from '../../api/schoolMeals'
 import { useMealPlan } from '../../contexts/MealPlanContext'
 import LoadingSpinner from '../../components/LoadingSpinner'
@@ -59,6 +59,10 @@ export default function MealPlanHome() {
   const [weekLoading, setWeekLoading] = useState(false)
   const [weekPlan, setWeekPlan] = useState(null)
   const [showForm, setShowForm] = useState(false)
+  const [frequentIngredients, setFrequentIngredients] = useState([])
+  const [showFreqIng, setShowFreqIng] = useState(false)
+  const [editFreqIng, setEditFreqIng] = useState(false)
+  const [newFreqIng, setNewFreqIng] = useState('')
 
   useEffect(() => {
     saveSettings({ period, mealTypes, useSchoolMeals })
@@ -74,6 +78,9 @@ export default function MealPlanHome() {
       .finally(() => setTodayLoading(false))
     getSchoolMeals()
       .then((meals) => { if (meals?.length > 0 && !saved) setUseSchoolMeals(true) })
+      .catch(() => {})
+    getFrequentIngredients()
+      .then(setFrequentIngredients)
       .catch(() => {})
   }, [])
 
@@ -311,6 +318,99 @@ export default function MealPlanHome() {
             value={ingredients}
             onChange={(e) => setIngredients(e.target.value)}
           />
+          <div className="mt-2 bg-white rounded-xl shadow-sm border border-gray-100 p-3">
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => setShowFreqIng((v) => !v)}
+                className="text-sm text-gray-600 font-semibold flex items-center gap-1"
+              >
+                <span>🧊</span> 자주 쓰는 재료 {showFreqIng ? '▲' : '▼'}
+              </button>
+              {showFreqIng && !editFreqIng && (
+                <button
+                  onClick={() => setEditFreqIng(true)}
+                  className="text-xs text-gray-400 hover:text-gray-600"
+                >
+                  관리
+                </button>
+              )}
+              {showFreqIng && editFreqIng && (
+                <button
+                  onClick={() => setEditFreqIng(false)}
+                  className="text-xs text-green-600 font-medium"
+                >
+                  완료
+                </button>
+              )}
+            </div>
+            {showFreqIng && (
+              <div className="mt-2 space-y-2">
+                <div className="flex flex-wrap gap-2">
+                  {frequentIngredients.map((f) => (
+                    <span key={f.id} className={`flex items-center text-sm px-3 py-1 rounded-full gap-1 ${
+                      editFreqIng ? 'bg-red-50 border border-red-200' : 'bg-gray-100'
+                    }`}>
+                      {editFreqIng ? (
+                        <button
+                          onClick={async () => {
+                            try {
+                              await deleteFrequentIngredient(f.id)
+                              setFrequentIngredients((prev) => prev.filter((i) => i.id !== f.id))
+                            } catch (e) { toast.error(e.message) }
+                          }}
+                          className="text-red-400 hover:text-red-600 flex items-center gap-1"
+                        >
+                          <span className="text-xs">✕</span> {f.name}
+                        </button>
+                      ) : (
+                        <button onClick={() => {
+                          const trimmed = ingredients.trim()
+                          const separator = trimmed && !trimmed.endsWith(',') ? ', ' : trimmed ? ' ' : ''
+                          setIngredients(trimmed + separator + f.name)
+                        }}>
+                          {f.name}
+                        </button>
+                      )}
+                    </span>
+                  ))}
+                  {frequentIngredients.length === 0 && !editFreqIng && (
+                    <p className="text-xs text-gray-400">등록된 재료가 없어요</p>
+                  )}
+                </div>
+                {editFreqIng && (
+                  <div className="flex gap-2">
+                    <input
+                      className="flex-1 border rounded-lg px-2 py-1 text-sm"
+                      placeholder="자주 쓰는 재료 추가"
+                      value={newFreqIng}
+                      onChange={(e) => setNewFreqIng(e.target.value)}
+                      onKeyDown={async (e) => {
+                        if (e.key === 'Enter') {
+                          if (!newFreqIng.trim()) return
+                          try {
+                            const item = await addFrequentIngredient(newFreqIng.trim())
+                            setFrequentIngredients((prev) => [...prev, item])
+                            setNewFreqIng('')
+                          } catch (err) { toast.error(err.message) }
+                        }
+                      }}
+                    />
+                    <button
+                      onClick={async () => {
+                        if (!newFreqIng.trim()) return
+                        try {
+                          const item = await addFrequentIngredient(newFreqIng.trim())
+                          setFrequentIngredients((prev) => [...prev, item])
+                          setNewFreqIng('')
+                        } catch (err) { toast.error(err.message) }
+                      }}
+                      className="bg-gray-200 text-sm px-3 py-1 rounded-lg"
+                    >+</button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </section>
 
         <button

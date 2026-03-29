@@ -8,6 +8,7 @@ from models import (
     RecommendRequest, RecommendResponse,
     SingleReRecommendRequest, MealTypeReRecommendRequest,
     SwapDatesRequest, UpdateHistoryRequest,
+    FrequentItemCreate, FrequentItemResponse,
 )
 from services.gemini import GeminiService, get_gemini
 
@@ -398,3 +399,20 @@ def get_approval_status(db=Depends(get_db)):
     ).fetchone()
     approved = row["value"] == "true" if row else False
     return {"approved": approved}
+
+
+@router.get("/meals/frequent-ingredients", response_model=list[FrequentItemResponse])
+def list_frequent_ingredients(db=Depends(get_db)):
+    return [dict(r) for r in db.execute("SELECT id, name FROM frequent_ingredients ORDER BY sort_order, id").fetchall()]
+
+
+@router.post("/meals/frequent-ingredients", response_model=FrequentItemResponse)
+def add_frequent_ingredient(body: FrequentItemCreate, db=Depends(get_db)):
+    cur = db.execute("INSERT INTO frequent_ingredients (name) VALUES (?)", (body.name,))
+    return {"id": cur.lastrowid, "name": body.name}
+
+
+@router.delete("/meals/frequent-ingredients/{fid}")
+def delete_frequent_ingredient(fid: int, db=Depends(get_db)):
+    db.execute("DELETE FROM frequent_ingredients WHERE id = ?", (fid,))
+    return {"ok": True}
