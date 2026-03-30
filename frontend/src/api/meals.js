@@ -34,6 +34,7 @@ export const reRecommendMealType = (body) => client.post('/meals/recommend/meal-
 })
 export const updateHistoryItem = (id, menuName) => client.patch(`/meals/history/${id}`, { menu_name: menuName })
 export const deleteHistoryItem = (id) => client.delete(`/meals/history/${id}`)
+export const deleteMealsByDate = (date) => client.delete(`/meals/history/date/${date}`)
 export const getTodayMeals = () => client.get('/meals/today')
 export const getWeekMeals = () => client.get('/meals/week')
 export const swapDates = (date1, date2) => client.put('/meals/swap-dates', { date1, date2 })

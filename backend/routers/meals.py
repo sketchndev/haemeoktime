@@ -374,6 +374,12 @@ def delete_history(history_id: int, db=Depends(get_db)):
     return {"ok": True}
 
 
+@router.delete("/meals/history/date/{date}")
+def delete_history_by_date(date: str, db=Depends(get_db)):
+    db.execute("DELETE FROM meal_history WHERE date = ?", (date,))
+    return {"ok": True}
+
+
 @router.put("/meals/swap-dates")
 def swap_dates(body: SwapDatesRequest, db=Depends(get_db)):
     if body.date1 == body.date2:

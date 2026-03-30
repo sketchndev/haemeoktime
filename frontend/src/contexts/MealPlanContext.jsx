@@ -69,6 +69,15 @@ export function MealPlanProvider({ children }) {
     })
   }
 
+  const removeDateMeals = (date) => {
+    setApproved(false)
+    setPlan((prev) => {
+      if (!prev) return prev
+      const newDays = prev.days.filter((day) => day.date !== date)
+      return newDays.length === 0 ? null : { ...prev, days: newDays }
+    })
+  }
+
   const swapDays = (date1, date2) => {
     setPlan((prev) => {
       if (!prev) return prev
@@ -90,7 +99,7 @@ export function MealPlanProvider({ children }) {
   }
 
   return (
-    <MealPlanContext.Provider value={{ plan, setPlan, ingredients, setIngredients, approved, setApproved, updateMenu, replaceMeal, removeMenu, swapDays }}>
+    <MealPlanContext.Provider value={{ plan, setPlan, ingredients, setIngredients, approved, setApproved, updateMenu, replaceMeal, removeMenu, removeDateMeals, swapDays }}>
       {children}
     </MealPlanContext.Provider>
   )
