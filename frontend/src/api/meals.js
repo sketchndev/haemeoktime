@@ -32,6 +32,8 @@ export const reRecommendMealType = (body) => client.post('/meals/recommend/meal-
   (data.menus || []).forEach(cacheMenuIngredient)
   return data
 })
+export const addHistoryItem = (date, mealType, menuName) =>
+  client.post('/meals/history', { date, meal_type: mealType, menu_name: menuName })
 export const updateHistoryItem = (id, menuName) => client.patch(`/meals/history/${id}`, { menu_name: menuName })
 export const deleteHistoryItem = (id) => client.delete(`/meals/history/${id}`)
 export const deleteMealsByDate = (date) => client.delete(`/meals/history/date/${date}`)

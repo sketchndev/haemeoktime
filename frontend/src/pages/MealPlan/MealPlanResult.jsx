@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useMealPlan } from '../../contexts/MealPlanContext'
-import { reRecommendSingle, reRecommendMealType, updateHistoryItem, deleteHistoryItem, deleteMealsByDate, getWeekMeals, approvePlan, getApprovalStatus, swapDates } from '../../api/meals'
+import { reRecommendSingle, reRecommendMealType, addHistoryItem, updateHistoryItem, deleteHistoryItem, deleteMealsByDate, getWeekMeals, approvePlan, getApprovalStatus, swapDates } from '../../api/meals'
 import { generateShopping } from '../../api/shopping'
 
 const MEAL_LABELS = { breakfast: '🌅 아침', lunch: '☀️ 점심', dinner: '🌙 저녁' }
@@ -12,7 +12,7 @@ export default function MealPlanResult() {
   const navigate = useNavigate()
   const location = useLocation()
   const fromWeekView = location.state?.fromWeekView === true
-  const { plan, setPlan, ingredients, approved, setApproved, updateMenu, replaceMeal, removeMenu, removeDateMeals, swapDays } = useMealPlan()
+  const { plan, setPlan, ingredients, approved, setApproved, updateMenu, replaceMeal, addMenu, removeMenu, removeDateMeals, swapDays } = useMealPlan()
   const todayStr = new Date().toLocaleDateString('en-CA')
   const [selectedDate, setSelectedDate] = useState('')
   const [fetchLoading, setFetchLoading] = useState(false)
@@ -47,6 +47,7 @@ export default function MealPlanResult() {
   const [shoppingLoading, setShoppingLoading] = useState(false)
   const [approveLoading, setApproveLoading] = useState(false)
   const [editingMenu, setEditingMenu] = useState(null)  // { historyId, value }
+  const [addingMeal, setAddingMeal] = useState(null)    // { mealType, value }
 
 
   const handleApprove = async () => {
@@ -144,6 +145,22 @@ export default function MealPlanResult() {
     } catch (e) {
       toast.error(e.message)
     }
+  }
+
+  const handleAddMenu = async (date, mealType) => {
+    const name = addingMeal?.value?.trim()
+    if (!name) {
+      setAddingMeal(null)
+      return
+    }
+    try {
+      const result = await addHistoryItem(date, mealType, name)
+      addMenu(date, mealType, result)
+      toast.success(`"${name}" 메뉴를 추가했어요`)
+    } catch (e) {
+      toast.error(e.message)
+    }
+    setAddingMeal(null)
   }
 
   const handleDeleteMenu = async (date, mealType, historyId) => {
@@ -368,6 +385,33 @@ export default function MealPlanResult() {
                   )
                 })}
               </div>
+
+              {!meal.is_school_meal && (
+                addingMeal?.mealType === meal.meal_type ? (
+                  <form
+                    onSubmit={(e) => { e.preventDefault(); handleAddMenu(currentDay.date, meal.meal_type) }}
+                    className="mt-2 flex gap-1.5 items-center"
+                  >
+                    <input
+                      autoFocus
+                      value={addingMeal.value}
+                      onChange={(e) => setAddingMeal((prev) => ({ ...prev, value: e.target.value }))}
+                      onBlur={() => { if (!addingMeal?.value?.trim()) setAddingMeal(null) }}
+                      className="flex-1 border rounded-lg px-2 py-1 text-sm"
+                      placeholder="메뉴명 입력"
+                    />
+                    <button type="submit" className="text-xs text-green-600 border border-green-300 px-2 py-1 rounded-full">추가</button>
+                    <button type="button" onClick={() => setAddingMeal(null)} className="text-xs text-gray-400 px-1">취소</button>
+                  </form>
+                ) : (
+                  <button
+                    onClick={() => setAddingMeal({ mealType: meal.meal_type, value: '' })}
+                    className="mt-2 w-full text-xs text-gray-400 border border-dashed border-gray-300 py-1.5 rounded-lg hover:text-green-600 hover:border-green-300"
+                  >
+                    + 메뉴 추가
+                  </button>
+                )
+              )}
 
               {!meal.is_school_meal && menuNames.length >= 2 && (
                 <button

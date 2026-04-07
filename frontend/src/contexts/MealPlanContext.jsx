@@ -48,6 +48,27 @@ export function MealPlanProvider({ children }) {
     })
   }
 
+  const addMenu = (date, mealType, newMenu) => {
+    setApproved(false)
+    setPlan((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        days: prev.days.map((day) =>
+          day.date !== date ? day : {
+            ...day,
+            meals: day.meals.map((meal) =>
+              meal.meal_type !== mealType ? meal : {
+                ...meal,
+                menus: [...meal.menus, newMenu],
+              }
+            ),
+          }
+        ),
+      }
+    })
+  }
+
   const removeMenu = (date, mealType, historyId) => {
     setApproved(false)
     setPlan((prev) => {
@@ -99,7 +120,7 @@ export function MealPlanProvider({ children }) {
   }
 
   return (
-    <MealPlanContext.Provider value={{ plan, setPlan, ingredients, setIngredients, approved, setApproved, updateMenu, replaceMeal, removeMenu, removeDateMeals, swapDays }}>
+    <MealPlanContext.Provider value={{ plan, setPlan, ingredients, setIngredients, approved, setApproved, updateMenu, replaceMeal, addMenu, removeMenu, removeDateMeals, swapDays }}>
       {children}
     </MealPlanContext.Provider>
   )

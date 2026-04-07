@@ -8,7 +8,7 @@ from database import get_db, open_db
 from models import (
     RecommendRequest, RecommendResponse,
     SingleReRecommendRequest, MealTypeReRecommendRequest,
-    SwapDatesRequest, UpdateHistoryRequest,
+    SwapDatesRequest, AddHistoryRequest, UpdateHistoryRequest,
     FrequentItemCreate, FrequentItemResponse,
 )
 from services.gemini import GeminiService, get_gemini
@@ -366,6 +366,21 @@ def update_history(history_id: int, body: UpdateHistoryRequest, db=Depends(get_d
         (body.menu_name, history_id),
     )
     return {"history_id": history_id, "name": body.menu_name, "main_ingredient": None, "main_ingredient_unit": None}
+
+
+@router.post("/meals/history")
+def add_history(body: AddHistoryRequest, db=Depends(get_db)):
+    cur = db.execute(
+        "INSERT INTO meal_history (date, meal_type, menu_name) VALUES (?, ?, ?)",
+        (body.date, body.meal_type, body.menu_name),
+    )
+    db.execute(
+        "INSERT OR REPLACE INTO meal_plan_settings (key, value) VALUES ('plan_approved', 'false')"
+    )
+    return {
+        "history_id": cur.lastrowid, "name": body.menu_name,
+        "main_ingredient": None, "main_ingredient_unit": None,
+    }
 
 
 @router.delete("/meals/history/{history_id}")

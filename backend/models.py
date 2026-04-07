@@ -93,6 +93,12 @@ class SwapDatesRequest(BaseModel):
     date2: str
 
 
+class AddHistoryRequest(BaseModel):
+    date: str
+    meal_type: str
+    menu_name: str
+
+
 class UpdateHistoryRequest(BaseModel):
     menu_name: str
 
