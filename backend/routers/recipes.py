@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from database import get_db
 from models import RecipeRequest, RecipeResponse, ExtractMainIngredientsRequest, CombinedCookingRequest, FavoriteCreate, FavoriteResponse
-from services.gemini import GeminiService, get_gemini
+from services.openai_service import OpenAIService, get_openai
 
 
 def _sse(data: dict) -> str:
@@ -18,11 +18,11 @@ def _get_saved_ingredients(db, menu_name: str) -> list | None:
 
 
 @router.post("/recipes/generate", response_model=RecipeResponse)
-def generate_recipe(body: RecipeRequest, db=Depends(get_db), gemini: GeminiService = Depends(get_gemini)):
+def generate_recipe(body: RecipeRequest, db=Depends(get_db), ai: OpenAIService = Depends(get_openai)):
     tags = [r["tag"] for r in db.execute("SELECT tag FROM family_tags").fetchall()]
     saved_ingredients = _get_saved_ingredients(db, body.menu_name)
     try:
-        result = gemini.generate_recipe(
+        result = ai.generate_recipe(
             menu_name=body.menu_name, servings=body.servings,
             family_tags=tags, main_ingredient_weight=body.main_ingredient_weight,
             user_context=body.user_context,
@@ -34,14 +34,14 @@ def generate_recipe(body: RecipeRequest, db=Depends(get_db), gemini: GeminiServi
 
 
 @router.post("/recipes/generate/stream")
-def generate_recipe_stream(body: RecipeRequest, db=Depends(get_db), gemini: GeminiService = Depends(get_gemini)):
+def generate_recipe_stream(body: RecipeRequest, db=Depends(get_db), ai: OpenAIService = Depends(get_openai)):
     tags = [r["tag"] for r in db.execute("SELECT tag FROM family_tags").fetchall()]
     saved_ingredients = _get_saved_ingredients(db, body.menu_name)
 
     def event_generator():
         yield _sse({"progress": 5, "stage": "설정 불러오는 중..."})
 
-        prompt = gemini.build_recipe_prompt(
+        prompt = ai.build_recipe_prompt(
             menu_name=body.menu_name, servings=body.servings,
             family_tags=tags, main_ingredient_weight=body.main_ingredient_weight,
             user_context=body.user_context,
@@ -51,7 +51,7 @@ def generate_recipe_stream(body: RecipeRequest, db=Depends(get_db), gemini: Gemi
         yield _sse({"progress": 10, "stage": "AI에게 요청 중..."})
 
         try:
-            gen = gemini._call_stream(prompt)
+            gen = ai._call_stream(prompt)
             result = None
             try:
                 while True:
@@ -69,18 +69,18 @@ def generate_recipe_stream(body: RecipeRequest, db=Depends(get_db), gemini: Gemi
 
 
 @router.post("/recipes/extract-main-ingredients")
-def extract_main_ingredients(body: ExtractMainIngredientsRequest, gemini: GeminiService = Depends(get_gemini)):
+def extract_main_ingredients(body: ExtractMainIngredientsRequest, ai: OpenAIService = Depends(get_openai)):
     try:
-        return gemini.extract_main_ingredients(menus=body.menus)
+        return ai.extract_main_ingredients(menus=body.menus)
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
 
 
 @router.post("/recipes/combined-cooking")
-def combined_cooking(body: CombinedCookingRequest, db=Depends(get_db), gemini: GeminiService = Depends(get_gemini)):
+def combined_cooking(body: CombinedCookingRequest, db=Depends(get_db), ai: OpenAIService = Depends(get_openai)):
     tags = [r["tag"] for r in db.execute("SELECT tag FROM family_tags").fetchall()]
     try:
-        return gemini.generate_combined_cooking(
+        return ai.generate_combined_cooking(
             menus=body.menus, family_tags=tags,
             servings=body.servings, main_ingredient_weights=body.main_ingredient_weights,
             user_context=body.user_context,
@@ -90,13 +90,13 @@ def combined_cooking(body: CombinedCookingRequest, db=Depends(get_db), gemini: G
 
 
 @router.post("/recipes/combined-cooking/stream")
-def combined_cooking_stream(body: CombinedCookingRequest, db=Depends(get_db), gemini: GeminiService = Depends(get_gemini)):
+def combined_cooking_stream(body: CombinedCookingRequest, db=Depends(get_db), ai: OpenAIService = Depends(get_openai)):
     tags = [r["tag"] for r in db.execute("SELECT tag FROM family_tags").fetchall()]
 
     def event_generator():
         yield _sse({"progress": 5, "stage": "설정 불러오는 중..."})
 
-        prompt, config = gemini.build_combined_cooking_prompt(
+        prompt = ai.build_combined_cooking_prompt(
             menus=body.menus, family_tags=tags,
             servings=body.servings, main_ingredient_weights=body.main_ingredient_weights,
             user_context=body.user_context,
@@ -105,7 +105,7 @@ def combined_cooking_stream(body: CombinedCookingRequest, db=Depends(get_db), ge
         yield _sse({"progress": 10, "stage": "AI에게 요청 중..."})
 
         try:
-            gen = gemini._call_stream(prompt, config=config)
+            gen = ai._call_stream(prompt)
             result = None
             try:
                 while True:

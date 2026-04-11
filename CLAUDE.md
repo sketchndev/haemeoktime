@@ -7,9 +7,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Backend
 ```bash
 cd backend
-python -m uvicorn main:app --reload          # Dev server on :8000
-pytest                                        # Run all tests
-pytest tests/test_routers.py::test_name       # Run single test
+uv sync                                       # Install dependencies
+uv run uvicorn main:app --reload              # Dev server on :8000
+uv run pytest                                 # Run all tests
+uv run pytest tests/test_routers.py::test_name # Run single test
 ```
 
 ### Frontend
@@ -21,21 +22,23 @@ npm run lint      # ESLint
 ```
 
 ### Environment
-Backend requires `.env` in `backend/` with `GEMINI_API_KEY`.
+Backend requires `.env` in `backend/` with `OPENAI_API_KEY` and `GEMINI_API_KEY`.
+Backend uses `uv` for Python dependency management (`pyproject.toml` + `uv.lock`).
 
 ## Architecture
 
-Full-stack 식단 추천 앱: React frontend + FastAPI backend + SQLite + Google Gemini API.
+Full-stack 식단 추천 앱: React frontend + FastAPI backend + SQLite + OpenAI GPT-5 + Google Gemini (이미지 분석 전용).
 
 ### Backend (`backend/`)
 
 - **main.py** — FastAPI app, CORS config, lifespan DB init, mounts routers under `/api`
 - **database.py** — SQLite with WAL mode, `get_db()` for FastAPI DI, `open_db()` for streaming contexts, auto-migration on startup
 - **models.py** — Pydantic request/response models (camelCase fields)
-- **services/gemini.py** — `GeminiService` wraps google-genai SDK; handles meal recommendations, recipe generation, combined cooking, ingredient extraction, shopping lists, photo parsing. Supports streaming via `_call_stream()` generator
+- **services/openai_service.py** — `OpenAIService` wraps OpenAI SDK (GPT-5); handles meal recommendations, recipe generation, combined cooking, ingredient extraction, shopping lists. Supports streaming via `_call_stream()` generator
+- **services/gemini.py** — `GeminiService` wraps google-genai SDK; image analysis only (condiment photo parsing, school meal photo parsing)
 - **routers/** — `profile`, `meals`, `recipes`, `shopping`, `school_meals`
 
-Key pattern: Long-running AI operations use SSE (Server-Sent Events) streaming endpoints alongside sync fallbacks. DB columns use snake_case; Pydantic models use camelCase.
+Key pattern: Long-running AI operations use SSE (Server-Sent Events) streaming endpoints alongside sync fallbacks. DB columns use snake_case; Pydantic models use camelCase. Text-based AI → OpenAI GPT-5, Image analysis → Gemini.
 
 ### Frontend (`frontend/src/`)
 
@@ -49,9 +52,9 @@ Key pattern: Streaming AI responses use `fetchSSE()` with progress callbacks. Re
 
 ### Data Flow
 1. Frontend calls `/api/*` → Vite proxy → FastAPI
-2. AI operations: Frontend opens SSE stream → FastAPI streams Gemini responses → Frontend updates UI progressively
+2. AI operations: Frontend opens SSE stream → FastAPI streams OpenAI/Gemini responses → Frontend updates UI progressively
 3. Favorites store full `recipe_data` JSON with `recipe_type` ('individual' | 'combined')
 
 ## Testing
 
-Backend tests use pytest with `asyncio_mode=auto` (see `pytest.ini`). Fixtures in `conftest.py` provide test DB and mock Gemini service. No frontend tests currently.
+Backend tests use pytest with `asyncio_mode=auto` (see `pyproject.toml` `[tool.pytest.ini_options]`). Fixtures in `conftest.py` provide test DB, `mock_openai` (text AI) and `mock_gemini` (image analysis). No frontend tests currently.

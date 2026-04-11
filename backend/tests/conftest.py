@@ -21,7 +21,7 @@ def client():
 
 @pytest.fixture
 def mock_gemini(client):
-    """Gemini 의존성을 mock으로 교체하는 픽스처."""
+    """Gemini 의존성을 mock으로 교체하는 픽스처 (이미지 분석용)."""
     from main import app
     from services.gemini import get_gemini
 
@@ -29,3 +29,15 @@ def mock_gemini(client):
     app.dependency_overrides[get_gemini] = lambda: mock
     yield mock
     app.dependency_overrides.pop(get_gemini, None)
+
+
+@pytest.fixture
+def mock_openai(client):
+    """OpenAI 의존성을 mock으로 교체하는 픽스처."""
+    from main import app
+    from services.openai_service import get_openai
+
+    mock = MagicMock()
+    app.dependency_overrides[get_openai] = lambda: mock
+    yield mock
+    app.dependency_overrides.pop(get_openai, None)

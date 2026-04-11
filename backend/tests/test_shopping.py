@@ -30,8 +30,8 @@ def test_delete_item(client):
     assert not any(i["id"] == item_id for i in items)
 
 
-def test_generate_replaces_auto_items(client, mock_gemini):
-    mock_gemini.recommend_meals.return_value = {
+def test_generate_replaces_auto_items(client, mock_openai):
+    mock_openai.recommend_meals.return_value = {
         "days": [{"date": "2026-03-23", "meals": [{"meal_type": "dinner", "menus": ["메뉴"]}]}]
     }
     client.post("/api/meals/recommend", json={
@@ -40,13 +40,13 @@ def test_generate_replaces_auto_items(client, mock_gemini):
     })
     client.put("/api/meals/approve")
 
-    mock_gemini.generate_shopping_list.return_value = {
+    mock_openai.generate_shopping_list.return_value = {
         "items": [{"name": "애호박", "quantity": "1개", "category": "채소/과일"}]
     }
     # 첫 번째 자동 생성
     client.post("/api/shopping/generate", json={"menus": ["된장찌개"]})
 
-    mock_gemini.generate_shopping_list.return_value = {
+    mock_openai.generate_shopping_list.return_value = {
         "items": [{"name": "소고기", "quantity": "300g", "category": "육류/해산물"}]
     }
     # 두 번째 자동 생성 — 기존 is_auto 항목 교체
@@ -58,8 +58,8 @@ def test_generate_replaces_auto_items(client, mock_gemini):
     assert auto_items[0]["name"] == "소고기"
 
 
-def test_generate_preserves_manual_items(client, mock_gemini):
-    mock_gemini.recommend_meals.return_value = {
+def test_generate_preserves_manual_items(client, mock_openai):
+    mock_openai.recommend_meals.return_value = {
         "days": [{"date": "2026-03-23", "meals": [{"meal_type": "dinner", "menus": ["메뉴"]}]}]
     }
     client.post("/api/meals/recommend", json={
@@ -69,7 +69,7 @@ def test_generate_preserves_manual_items(client, mock_gemini):
     client.put("/api/meals/approve")
 
     client.post("/api/shopping/items", json={"name": "수동항목"})
-    mock_gemini.generate_shopping_list.return_value = {
+    mock_openai.generate_shopping_list.return_value = {
         "items": [{"name": "자동항목", "quantity": "1개", "category": "기타"}]
     }
     client.post("/api/shopping/generate", json={"menus": ["메뉴"]})
@@ -80,8 +80,8 @@ def test_generate_preserves_manual_items(client, mock_gemini):
     assert "자동항목" in names
 
 
-def test_generate_shopping_requires_approval(client, mock_gemini):
-    mock_gemini.recommend_meals.return_value = {
+def test_generate_shopping_requires_approval(client, mock_openai):
+    mock_openai.recommend_meals.return_value = {
         "days": [{"date": "2026-03-23", "meals": [{"meal_type": "dinner", "menus": ["된장찌개"]}]}]
     }
     client.post("/api/meals/recommend", json={
@@ -93,8 +93,8 @@ def test_generate_shopping_requires_approval(client, mock_gemini):
     assert "승인" in res.json()["detail"]
 
 
-def test_generate_shopping_after_approval(client, mock_gemini):
-    mock_gemini.recommend_meals.return_value = {
+def test_generate_shopping_after_approval(client, mock_openai):
+    mock_openai.recommend_meals.return_value = {
         "days": [{"date": "2026-03-23", "meals": [{"meal_type": "dinner", "menus": ["된장찌개"]}]}]
     }
     client.post("/api/meals/recommend", json={
@@ -103,7 +103,7 @@ def test_generate_shopping_after_approval(client, mock_gemini):
     })
     client.put("/api/meals/approve")
 
-    mock_gemini.generate_shopping_list.return_value = {
+    mock_openai.generate_shopping_list.return_value = {
         "items": [{"name": "두부", "quantity": "1모", "category": "기타"}]
     }
     res = client.post("/api/shopping/generate", json={"menus": ["된장찌개"]})

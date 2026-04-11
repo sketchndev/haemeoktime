@@ -11,7 +11,7 @@ from models import (
     SwapDatesRequest, AddHistoryRequest, UpdateHistoryRequest,
     FrequentItemCreate, FrequentItemResponse,
 )
-from services.gemini import GeminiService, get_gemini
+from services.openai_service import OpenAIService, get_openai
 
 
 def _parse_menu_count(composition_rule: str) -> int:
@@ -99,14 +99,14 @@ def _resolve_dates(req: RecommendRequest) -> list[str]:
 
 
 @router.post("/meals/recommend", response_model=RecommendResponse)
-def recommend(body: RecommendRequest, db=Depends(get_db), gemini: GeminiService = Depends(get_gemini)):
+def recommend(body: RecommendRequest, db=Depends(get_db), ai: OpenAIService = Depends(get_openai)):
     _purge_old_history(db)
     dates = _resolve_dates(body)
     tags, condiments, history, times, weekly_rule, composition_rule = _get_context(db)
     school_meals = _get_school_meals_dict(db, dates) if body.use_school_meals else {}
 
     try:
-        result = gemini.recommend_meals(
+        result = ai.recommend_meals(
             dates=dates, meal_types=body.meal_types,
             family_tags=tags, condiments=condiments,
             meal_history=history, school_meals=school_meals,
@@ -117,15 +117,15 @@ def recommend(body: RecommendRequest, db=Depends(get_db), gemini: GeminiService 
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
 
-    return _process_gemini_result(result, body, dates, composition_rule, school_meals, db)
+    return _process_ai_result(result, body, dates, composition_rule, school_meals, db)
 
 
 def _sse(data: dict) -> str:
     return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
-def _process_gemini_result(result: dict, body: RecommendRequest, dates, composition_rule, school_meals, db):
-    """Gemini 응답 → DB 저장 + plan 구조 반환 (recommend 와 stream 공용)"""
+def _process_ai_result(result: dict, body: RecommendRequest, dates, composition_rule, school_meals, db):
+    """AI 응답 → DB 저장 + plan 구조 반환 (recommend 와 stream 공용)"""
     gemini_days = result.get("days", [])
     max_menus = _parse_menu_count(composition_rule) if composition_rule else 0
 
@@ -198,16 +198,24 @@ def _process_gemini_result(result: dict, body: RecommendRequest, dates, composit
 
 
 @router.post("/meals/recommend/stream")
-def recommend_stream(body: RecommendRequest, db=Depends(get_db), gemini: GeminiService = Depends(get_gemini)):
-    _purge_old_history(db)
-    dates = _resolve_dates(body)
-    tags, condiments, history, times, weekly_rule, composition_rule = _get_context(db)
-    school_meals = _get_school_meals_dict(db, dates) if body.use_school_meals else {}
+def recommend_stream(body: RecommendRequest, ai: OpenAIService = Depends(get_openai)):
+    pre_db = open_db()
+    try:
+        _purge_old_history(pre_db)
+        dates = _resolve_dates(body)
+        tags, condiments, history, times, weekly_rule, composition_rule = _get_context(pre_db)
+        school_meals = _get_school_meals_dict(pre_db, dates) if body.use_school_meals else {}
+        pre_db.commit()
+    except Exception:
+        pre_db.rollback()
+        raise
+    finally:
+        pre_db.close()
 
     def event_generator():
         yield _sse({"progress": 5, "stage": "설정 불러오는 중..."})
 
-        prompt = gemini.build_recommend_prompt(
+        prompt = ai.build_recommend_prompt(
             dates=dates, meal_types=body.meal_types,
             family_tags=tags, condiments=condiments,
             meal_history=history, school_meals=school_meals,
@@ -218,7 +226,7 @@ def recommend_stream(body: RecommendRequest, db=Depends(get_db), gemini: GeminiS
         yield _sse({"progress": 10, "stage": "AI에게 요청 중..."})
 
         try:
-            gen = gemini._call_stream(prompt)
+            gen = ai._call_stream(prompt)
             result = None
             try:
                 while True:
@@ -231,7 +239,7 @@ def recommend_stream(body: RecommendRequest, db=Depends(get_db), gemini: GeminiS
             yield _sse({"progress": 90, "stage": "식단 저장 중..."})
             stream_db = open_db()
             try:
-                plan = _process_gemini_result(result, body, dates, composition_rule, school_meals, stream_db)
+                plan = _process_ai_result(result, body, dates, composition_rule, school_meals, stream_db)
                 stream_db.commit()
             except Exception:
                 stream_db.rollback()
@@ -251,13 +259,13 @@ def recommend_stream(body: RecommendRequest, db=Depends(get_db), gemini: GeminiS
 def rerecommend_single(
     body: SingleReRecommendRequest,
     db=Depends(get_db),
-    gemini: GeminiService = Depends(get_gemini),
+    ai: OpenAIService = Depends(get_openai),
 ):
     tags, condiments, _, times, _, _ = _get_context(db)
     max_min = body.max_minutes_override if body.max_minutes_override is not None else times.get(body.meal_type, 40)
 
     try:
-        result = gemini.re_recommend_single(
+        result = ai.re_recommend_single(
             date=body.date, meal_type=body.meal_type, exclude_menu=body.menu_name,
             existing_menus=body.existing_menus, family_tags=tags,
             condiments=condiments, max_minutes=max_min,
@@ -284,13 +292,13 @@ def rerecommend_single(
 def rerecommend_meal_type(
     body: MealTypeReRecommendRequest,
     db=Depends(get_db),
-    gemini: GeminiService = Depends(get_gemini),
+    ai: OpenAIService = Depends(get_openai),
 ):
     tags, condiments, history, times, _, composition_rule = _get_context(db)
     max_min = body.max_minutes_override if body.max_minutes_override is not None else times.get(body.meal_type, 40)
 
     try:
-        result = gemini.re_recommend_meal_type(
+        result = ai.re_recommend_meal_type(
             date=body.date, meal_type=body.meal_type, family_tags=tags,
             condiments=condiments, max_minutes=max_min, meal_history=history,
             composition_rule=composition_rule,
