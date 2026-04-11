@@ -37,6 +37,7 @@ def update_cooking_times(body: CookingTimes, db=Depends(get_db)):
             "INSERT OR REPLACE INTO cooking_time_settings (meal_type, max_minutes) VALUES (?, ?)",
             (meal_type, minutes),
         )
+    db.commit()
     return {"ok": True}
 
 
@@ -60,6 +61,7 @@ def update_meal_plan_settings(body: MealPlanSettings, db=Depends(get_db)):
         "INSERT OR REPLACE INTO meal_plan_settings (key, value) VALUES (?, ?)",
         ("composition_rule", body.composition_rule),
     )
+    db.commit()
     return {"ok": True}
 
 
