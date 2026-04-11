@@ -3,8 +3,8 @@ module.exports = {
     {
       name: 'haemeoktime-backend',
       cwd: './backend',
-      script: 'python3.11',
-      args: '-m uvicorn main:app --host 0.0.0.0 --port 8000',
+      script: 'uv',
+      args: 'run uvicorn main:app --host 0.0.0.0 --port 8000',
       interpreter: 'none',
     },
     {
