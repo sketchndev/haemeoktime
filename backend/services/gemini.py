@@ -3,6 +3,7 @@ import os
 
 from google import genai
 from google.genai import types
+from google.genai.errors import ClientError
 
 
 class GeminiService:
@@ -25,6 +26,10 @@ class GeminiService:
             return json.loads(response.text)
         except json.JSONDecodeError as e:
             raise Exception(f"Gemini 응답 파싱 실패: {e}") from e
+        except ClientError as e:
+            if e.code == 429:
+                raise Exception("AI API 할당량이 부족합니다.") from e
+            raise Exception(f"Gemini 호출 실패: {e}") from e
         except Exception as e:
             raise Exception(f"Gemini 호출 실패: {e}") from e
 

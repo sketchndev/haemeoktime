@@ -3,7 +3,7 @@ import os
 import re
 from typing import Optional
 
-from openai import OpenAI
+from openai import OpenAI, RateLimitError
 
 
 def _parse_menu_count(composition_rule: str) -> int:
@@ -38,6 +38,8 @@ class OpenAIService:
             return json.loads(response.choices[0].message.content)
         except json.JSONDecodeError as e:
             raise Exception(f"OpenAI 응답 파싱 실패: {e}") from e
+        except RateLimitError as e:
+            raise Exception("AI API 할당량이 부족합니다.") from e
         except Exception as e:
             if "JSONDecodeError" not in type(e).__name__:
                 raise Exception(f"OpenAI 호출 실패: {e}") from e
@@ -65,6 +67,8 @@ class OpenAIService:
             return json.loads(full_text)
         except json.JSONDecodeError as e:
             raise Exception(f"OpenAI 응답 파싱 실패: {e}") from e
+        except RateLimitError as e:
+            raise Exception("AI API 할당량이 부족합니다.") from e
         except Exception as e:
             if "JSONDecodeError" not in type(e).__name__:
                 raise Exception(f"OpenAI 호출 실패: {e}") from e
