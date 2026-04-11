@@ -7,7 +7,7 @@ from models import (
     ShoppingGenerateRequest, ShoppingCheckRequest,
     FrequentItemCreate, FrequentItemResponse,
 )
-from services.gemini import GeminiService, get_gemini
+from services.openai_service import OpenAIService, get_openai
 
 router = APIRouter()
 
@@ -31,7 +31,7 @@ def get_shopping(db=Depends(get_db)):
 def generate_shopping(
     body: ShoppingGenerateRequest,
     db=Depends(get_db),
-    gemini: GeminiService = Depends(get_gemini),
+    ai: OpenAIService = Depends(get_openai),
 ):
     week_start = _current_week_start()
     row = db.execute(
@@ -46,7 +46,7 @@ def generate_shopping(
     available_ingredients = ai_row["value"] if ai_row else ""
 
     try:
-        result = gemini.generate_shopping_list(
+        result = ai.generate_shopping_list(
             menus=body.menus, condiments=condiments,
             available_ingredients=available_ingredients,
         )

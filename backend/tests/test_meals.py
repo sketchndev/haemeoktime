@@ -11,8 +11,8 @@ def recommend_response():
     }
 
 
-def test_recommend_saves_history_and_returns_ids(client, mock_gemini, recommend_response):
-    mock_gemini.recommend_meals.return_value = recommend_response
+def test_recommend_saves_history_and_returns_ids(client, mock_openai, recommend_response):
+    mock_openai.recommend_meals.return_value = recommend_response
     res = client.post("/api/meals/recommend", json={
         "period": "today", "dates": ["2026-03-23"],
         "meal_types": ["dinner"], "available_ingredients": "", "use_school_meals": False,
@@ -25,8 +25,8 @@ def test_recommend_saves_history_and_returns_ids(client, mock_gemini, recommend_
     assert menus[0]["name"] == "된장찌개"
 
 
-def test_recommend_auto_deletes_old_history(client, mock_gemini, recommend_response):
-    mock_gemini.recommend_meals.return_value = recommend_response
+def test_recommend_auto_deletes_old_history(client, mock_openai, recommend_response):
+    mock_openai.recommend_meals.return_value = recommend_response
     # 첫 번째 추천
     client.post("/api/meals/recommend", json={
         "period": "today", "dates": ["2026-03-23"],
@@ -40,7 +40,7 @@ def test_recommend_auto_deletes_old_history(client, mock_gemini, recommend_respo
     conn.commit()
     conn.close()
 
-    mock_gemini.recommend_meals.return_value = recommend_response
+    mock_openai.recommend_meals.return_value = recommend_response
     client.post("/api/meals/recommend", json={
         "period": "today", "dates": ["2026-03-24"],
         "meal_types": ["dinner"], "available_ingredients": "", "use_school_meals": False,
@@ -52,8 +52,8 @@ def test_recommend_auto_deletes_old_history(client, mock_gemini, recommend_respo
     assert len(old) == 0
 
 
-def test_delete_history_item(client, mock_gemini, recommend_response):
-    mock_gemini.recommend_meals.return_value = recommend_response
+def test_delete_history_item(client, mock_openai, recommend_response):
+    mock_openai.recommend_meals.return_value = recommend_response
     res = client.post("/api/meals/recommend", json={
         "period": "today", "dates": ["2026-03-23"],
         "meal_types": ["dinner"], "available_ingredients": "", "use_school_meals": False,
@@ -64,15 +64,15 @@ def test_delete_history_item(client, mock_gemini, recommend_response):
     assert del_res.status_code == 200
 
 
-def test_single_rerecommend(client, mock_gemini, recommend_response):
-    mock_gemini.recommend_meals.return_value = recommend_response
+def test_single_rerecommend(client, mock_openai, recommend_response):
+    mock_openai.recommend_meals.return_value = recommend_response
     rec = client.post("/api/meals/recommend", json={
         "period": "today", "dates": ["2026-03-23"],
         "meal_types": ["dinner"], "available_ingredients": "", "use_school_meals": False,
     })
     hid = rec.json()["days"][0]["meals"][0]["menus"][0]["history_id"]
 
-    mock_gemini.re_recommend_single.return_value = {"menu_name": "비빔밥"}
+    mock_openai.re_recommend_single.return_value = {"menu_name": "비빔밥"}
     res = client.post("/api/meals/recommend/single", json={
         "date": "2026-03-23", "meal_type": "dinner",
         "history_id": hid, "menu_name": "된장찌개",
@@ -82,15 +82,15 @@ def test_single_rerecommend(client, mock_gemini, recommend_response):
     assert res.json()["name"] == "비빔밥"
 
 
-def test_mealtype_rerecommend(client, mock_gemini, recommend_response):
-    mock_gemini.recommend_meals.return_value = recommend_response
+def test_mealtype_rerecommend(client, mock_openai, recommend_response):
+    mock_openai.recommend_meals.return_value = recommend_response
     rec = client.post("/api/meals/recommend", json={
         "period": "today", "dates": ["2026-03-23"],
         "meal_types": ["dinner"], "available_ingredients": "", "use_school_meals": False,
     })
     hids = [m["history_id"] for m in rec.json()["days"][0]["meals"][0]["menus"]]
 
-    mock_gemini.re_recommend_meal_type.return_value = {"menus": ["불고기", "미역국"]}
+    mock_openai.re_recommend_meal_type.return_value = {"menus": ["불고기", "미역국"]}
     res = client.post("/api/meals/recommend/meal-type", json={
         "date": "2026-03-23", "meal_type": "dinner",
         "max_minutes_override": 60, "existing_history_ids": hids,
@@ -99,8 +99,8 @@ def test_mealtype_rerecommend(client, mock_gemini, recommend_response):
     assert len(res.json()["menus"]) == 2
 
 
-def test_recommend_gemini_failure_returns_503(client, mock_gemini):
-    mock_gemini.recommend_meals.side_effect = Exception("Gemini 호출 실패")
+def test_recommend_openai_failure_returns_503(client, mock_openai):
+    mock_openai.recommend_meals.side_effect = Exception("OpenAI 호출 실패")
     res = client.post("/api/meals/recommend", json={
         "period": "today", "dates": ["2026-03-23"],
         "meal_types": ["dinner"], "available_ingredients": "", "use_school_meals": False,
@@ -188,8 +188,8 @@ def test_get_week_meals_empty(client):
     assert res.json() == {"days": [], "available_ingredients": ""}
 
 
-def test_recommend_saves_main_ingredient(client, mock_gemini):
-    mock_gemini.recommend_meals.return_value = {
+def test_recommend_saves_main_ingredient(client, mock_openai):
+    mock_openai.recommend_meals.return_value = {
         "days": [{
             "date": "2026-03-23",
             "meals": [{"meal_type": "dinner", "menus": [
@@ -237,8 +237,8 @@ def test_get_today_meals_includes_main_ingredient(client):
     assert menu["main_ingredient_unit"] == "모"
 
 
-def test_approve_plan(client, mock_gemini):
-    mock_gemini.recommend_meals.return_value = {
+def test_approve_plan(client, mock_openai):
+    mock_openai.recommend_meals.return_value = {
         "days": [{
             "date": "2026-03-23",
             "meals": [{"meal_type": "dinner", "menus": ["된장찌개"]}],
@@ -260,8 +260,8 @@ def test_approve_plan(client, mock_gemini):
     assert status.json()["approved"] is True
 
 
-def test_recommend_resets_approval(client, mock_gemini):
-    mock_gemini.recommend_meals.return_value = {
+def test_recommend_resets_approval(client, mock_openai):
+    mock_openai.recommend_meals.return_value = {
         "days": [{
             "date": "2026-03-23",
             "meals": [{"meal_type": "dinner", "menus": ["된장찌개"]}],
@@ -281,8 +281,8 @@ def test_recommend_resets_approval(client, mock_gemini):
     assert status.json()["approved"] is False
 
 
-def test_rerecommend_single_resets_approval(client, mock_gemini):
-    mock_gemini.recommend_meals.return_value = {
+def test_rerecommend_single_resets_approval(client, mock_openai):
+    mock_openai.recommend_meals.return_value = {
         "days": [{
             "date": "2026-03-23",
             "meals": [{"meal_type": "dinner", "menus": ["된장찌개"]}],
@@ -295,7 +295,7 @@ def test_rerecommend_single_resets_approval(client, mock_gemini):
     hid = rec.json()["days"][0]["meals"][0]["menus"][0]["history_id"]
     client.put("/api/meals/approve")
 
-    mock_gemini.re_recommend_single.return_value = {"menu_name": "비빔밥"}
+    mock_openai.re_recommend_single.return_value = {"menu_name": "비빔밥"}
     client.post("/api/meals/recommend/single", json={
         "date": "2026-03-23", "meal_type": "dinner",
         "history_id": hid, "menu_name": "된장찌개",

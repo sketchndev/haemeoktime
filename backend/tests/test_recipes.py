@@ -6,8 +6,8 @@ def _fake_recipe(menu="된장찌개", servings=2):
     }
 
 
-def test_generate_recipe(client, mock_gemini):
-    mock_gemini.generate_recipe.return_value = _fake_recipe()
+def test_generate_recipe(client, mock_openai):
+    mock_openai.generate_recipe.return_value = _fake_recipe()
     res = client.post("/api/recipes/generate", json={
         "menu_name": "된장찌개", "servings": 2, "main_ingredient_weight": None,
     })
@@ -17,14 +17,14 @@ def test_generate_recipe(client, mock_gemini):
     assert body["ingredients"][0]["name"] == "두부"
 
 
-def test_generate_recipe_gemini_failure_returns_503(client, mock_gemini):
-    mock_gemini.generate_recipe.side_effect = Exception("Gemini 호출 실패")
+def test_generate_recipe_openai_failure_returns_503(client, mock_openai):
+    mock_openai.generate_recipe.side_effect = Exception("OpenAI 호출 실패")
     res = client.post("/api/recipes/generate", json={"menu_name": "X", "servings": 1})
     assert res.status_code == 503
 
 
-def test_combined_cooking(client, mock_gemini):
-    mock_gemini.generate_combined_cooking.return_value = {
+def test_combined_cooking(client, mock_openai):
+    mock_openai.generate_combined_cooking.return_value = {
         "total_minutes": 60, "optimized_minutes": 40,
         "steps": [{"label": "1단계", "menu_tag": "된장찌개", "description": "물 올리기"}],
     }
